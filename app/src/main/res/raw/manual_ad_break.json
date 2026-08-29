@@ -1,0 +1,33 @@
+{
+  "breakId": "reference-midroll",
+  "timeOffsetMs": 10000,
+  "ads": [
+    {
+      "id": "truex-interactive",
+      "adSystem": "trueX",
+      "mediaUrl": "https://media.truex.com/m/video/truexloadingplaceholder-30s.mp4",
+      "configUrl": "https://get.truex.com/88ac681ba8d0458e413dc22374194ab9f60b6664/vast/config?dimension_5=PI-2449-ctv-ad",
+      "durationSeconds": 30
+    },
+    {
+      "id": "idvx-interactive",
+      "adSystem": "IDVx",
+      "mediaUrl": "https://media.truex.com/m/video/truexloadingplaceholder-30s.mp4",
+      "configUrl": "https://qa-get.truex.com/eb9f752aeab71d71dd129da48ed98206e53a96dd/vast/config",
+      "durationSeconds": 30
+    },
+    {
+      "id": "airline-linear",
+      "adSystem": "Linear",
+      "mediaUrl": "https://ctv.truex.com/assets/airline-720p.mp4",
+      "durationSeconds": 30
+    },
+    {
+      "id": "petcare-linear",
+      "adSystem": "Linear",
+      "mediaUrl": "https://ctv.truex.com/assets/petcare-720p.mp4",
+      "durationSeconds": 30
+    }
+  ]
+}
+

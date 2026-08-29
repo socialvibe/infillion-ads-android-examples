@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.TrueXReference" parent="Theme.AppCompat.NoActionBar">
+        <item name="android:fontFamily">@font/be_vietnam_pro_regular</item>
+        <item name="android:windowActionModeOverlay">true</item>
+        <item name="android:windowFullscreen">true</item>
+        <item name="android:windowLightNavigationBar">false</item>
+        <item name="android:windowNoTitle">true</item>
+        <item name="android:windowBackground">@color/charcoal</item>
+        <item name="colorAccent">@color/bloom_pink</item>
+    </style>
+</resources>
+

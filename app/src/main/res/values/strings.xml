@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Infillion TrueX CTV Examples</string>
+    <string name="manual_csai_title">Plain / Manual CSAI</string>
+    <string name="ima_csai_title">Google IMA CSAI</string>
+    <string name="ima_ssai_title">Google IMA SSAI</string>
+    <string name="player_status_content">Content</string>
+</resources>
+
