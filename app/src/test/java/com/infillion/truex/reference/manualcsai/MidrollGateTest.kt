@@ -15,9 +15,9 @@ class MidrollGateTest {
     }
 
     @Test
-    fun onlyTruexCreditSkipsPod() {
-        assertTrue(shouldSkipRemainingPod(ManualAdType.TRUEX, receivedCredit = true))
-        assertFalse(shouldSkipRemainingPod(ManualAdType.TRUEX, receivedCredit = false))
-        assertFalse(shouldSkipRemainingPod(ManualAdType.IDVX, receivedCredit = true))
+    fun onlyCompletedTruexRewardSkipsPod() {
+        assertTrue(shouldSkipRemainingPod(ManualAdType.TRUEX, shouldSkipPod = true))
+        assertFalse(shouldSkipRemainingPod(ManualAdType.TRUEX, shouldSkipPod = false))
+        assertFalse(shouldSkipRemainingPod(ManualAdType.IDVX, shouldSkipPod = true))
     }
 }

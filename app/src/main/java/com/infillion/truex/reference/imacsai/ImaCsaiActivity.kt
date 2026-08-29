@@ -141,22 +141,22 @@ class ImaCsaiActivity : AppCompatActivity(), ImaCsaiTruexRenderer.Listener {
         runCatching { newRenderer.start(binding.adContainer, payload, type) }
             .onFailure { error ->
                 showStatus("Renderer setup failed: ${error.message} • continuing IMA")
-                finishInteractive(receivedCredit = false)
+                finishInteractive(shouldSkipPod = false)
             }
     }
 
-    // [3] TrueX credit discards the pod; every other outcome resumes IMA fallback.
-    override fun onTerminal(receivedCredit: Boolean, event: TruexAdEvent) {
+    // [3] AD_FREE_POD credit discards the pod only after AD_COMPLETED.
+    override fun onTerminal(shouldSkipPod: Boolean, event: TruexAdEvent) {
         showStatus("Renderer finished: $event")
-        finishInteractive(receivedCredit)
+        finishInteractive(shouldSkipPod)
     }
 
-    private fun finishInteractive(receivedCredit: Boolean) {
+    private fun finishInteractive(shouldSkipPod: Boolean) {
         val type = currentInteractiveType
         disposeRenderer()
         currentInteractiveType = null
         binding.playerView.visibility = View.VISIBLE
-        if (type == ImaCsaiAdType.TRUEX && receivedCredit) {
+        if (type == ImaCsaiAdType.TRUEX && shouldSkipPod) {
             showStatus("TrueX credit earned • IMA pod discarded")
             adsManager?.discardAdBreak()
             adsManager?.resume()

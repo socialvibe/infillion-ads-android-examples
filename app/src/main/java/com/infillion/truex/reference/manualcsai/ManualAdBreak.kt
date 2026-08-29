@@ -68,6 +68,5 @@ internal class MidrollGate(private val timeOffsetMs: Long) {
     }
 }
 
-internal fun shouldSkipRemainingPod(type: ManualAdType, receivedCredit: Boolean): Boolean =
-    type == ManualAdType.TRUEX && receivedCredit
-
+internal fun shouldSkipRemainingPod(type: ManualAdType, shouldSkipPod: Boolean): Boolean =
+    type == ManualAdType.TRUEX && shouldSkipPod

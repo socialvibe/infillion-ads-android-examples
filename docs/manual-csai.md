@@ -13,7 +13,7 @@ Copy the complete `manualcsai` package, `activity_manual_csai.xml`, and `manual_
 3. The activity stores the content position and parses the bundled ad response.
 4. Linear ads play through the same case-local ExoPlayer.
 5. For TrueX or IDVx, the placeholder is positioned near its end and paused, the player is hidden, and `TruexAdRenderer` starts in the overlay `FrameLayout`.
-6. `AD_FREE_POD` records TrueX credit. A terminal renderer event decides whether to skip the remaining pod or continue it.
+6. `AD_FREE_POD` records TrueX credit. On `AD_COMPLETED`, earned credit skips the remaining pod; errors and unavailable ads continue the fallback pod.
 7. Content is reloaded and restored to its saved position after the pod.
 
 ## Renderer contract
@@ -34,4 +34,3 @@ The example creates `TruexAdOptions` next to the renderer:
 - Supply the publisher's advertising identity and privacy/consent values.
 - Integrate the one-shot gate with the production timeline and persisted playback state.
 - Define production retry, telemetry, and renderer-error policy.
-

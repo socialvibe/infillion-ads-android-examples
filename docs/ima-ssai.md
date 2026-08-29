@@ -14,7 +14,7 @@ Copy the complete `imassai` package and `activity_ima_ssai.xml`. The package own
 4. Seeking over an unplayed break snaps back to its cue point and remembers the viewer's requested destination.
 5. On ad `STARTED`, the example tracks the stitched placeholder end and identifies TrueX or IDVx through `AdSystem`.
 6. The stitched stream pauses and hides while `TruexAdRenderer` owns the overlay.
-7. TrueX credit seeks to the ad-break offset plus its duration and a small safety margin. Without credit, playback seeks just before the interactive placeholder end so the stitched pod continues. IDVx always continues.
+7. `AD_FREE_POD` records TrueX credit. On `AD_COMPLETED`, earned credit seeks to the ad-break offset plus its duration and a small safety margin. Without successful completion, playback seeks just before the interactive placeholder end so the stitched pod continues. IDVx always continues.
 
 ## Time domains
 

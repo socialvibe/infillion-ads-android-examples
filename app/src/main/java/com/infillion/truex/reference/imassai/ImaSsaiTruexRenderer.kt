@@ -14,7 +14,7 @@ internal class ImaSsaiTruexRenderer(
     private val listener: Listener,
 ) {
     interface Listener {
-        fun onTerminal(receivedCredit: Boolean, event: TruexAdEvent)
+        fun onTerminal(shouldSkipPod: Boolean, event: TruexAdEvent)
         fun onPopup(uri: Uri)
         fun onCancelStream()
         fun onEvent(event: TruexAdEvent)
@@ -37,7 +37,10 @@ internal class ImaSsaiTruexRenderer(
             TruexAdEvent.NO_ADS_AVAILABLE,
             -> if (!terminalDelivered) {
                 terminalDelivered = true
-                listener.onTerminal(receivedCredit, event)
+                listener.onTerminal(
+                    shouldSkipPod = receivedCredit && event == TruexAdEvent.AD_COMPLETED,
+                    event = event,
+                )
             }
             else -> Unit
         }
@@ -67,4 +70,3 @@ internal class ImaSsaiTruexRenderer(
         renderer.stop()
     }
 }
-

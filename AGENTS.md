@@ -1,6 +1,6 @@
 # AGENTS.md
 
-Behavioral and workflow guidelines for AI coding agents (and humans) working in this repo. **Project facts** — setup, build, test, run, architecture — live in [README.md](README.md); this file is about *how we work*, so the two don't overlap.
+Behavioral and workflow guidelines for AI coding agents (and humans) working in this repo. Product and run information lives in [README.md](README.md); build, test, and release instructions live in [CONTRIBUTING.md](CONTRIBUTING.md). This file is about *how we work*, so they don't overlap.
 
 **Tradeoff:** These guidelines bias toward caution over speed. For trivial tasks, use judgment.
 
@@ -69,7 +69,7 @@ Strong success criteria let you loop independently. Weak criteria ("make it work
 
 At the start of every session, in order:
 
-1. Read [README.md](README.md) for project facts, and `CLAUDE-LOCAL.md` if present (optional, git-ignored personal notes). Incorporate their key data into your working context.
+1. Read [README.md](README.md) and [CONTRIBUTING.md](CONTRIBUTING.md) for project facts, and `CLAUDE-LOCAL.md` if present (optional, git-ignored personal notes). Incorporate their key data into your working context.
 2. Check the current branch (`git branch --show-current`):
    - **If on the default branch (`main`) and `origin` exists**:
      1. Fast-forward local `main` to `origin/main` (`git fetch origin && git pull --ff-only`). Never branch from a stale `main`.
@@ -78,7 +78,7 @@ At the start of every session, in order:
    - **If on local `main` and no remote exists**: the repository is still being bootstrapped. Direct work on `main` is allowed until the initial remote push.
    - **If on a feature or bugfix branch**: derive the ticket from the branch name (e.g. `feature/PI-3333/fix-something` → `PI-3333`, other possible prefixes: `ADX-XXXX`). Confirm it with the user in a single line of text.
 3. Store the ticket for the rest of the session — reuse it for branch naming, commit messages, and PR titles without asking again.
-4. **Commit messages** use `<TICKET> - <MESSAGE>` (e.g. `PI-3670 - Restructure ad tags catalog`). See [README.md](README.md) § Commits.
+4. **Commit messages** use `<TICKET> - <MESSAGE>` (e.g. `PI-3670 - Restructure ad tags catalog`). See [CONTRIBUTING.md](CONTRIBUTING.md) § Commits.
 
 ## 6. Versioning
 

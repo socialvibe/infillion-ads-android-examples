@@ -1,57 +1,67 @@
 # Infillion TrueX Android TV Examples
 
-A single Android TV reference app demonstrating three complete ways to add Infillion interactive ads to a Media3 player:
+An Android TV reference app demonstrating three complete ways to add Infillion interactive ads to a Media3 player:
 
-- **Plain / Manual CSAI** - the host app schedules and plays the ad pod.
-- **Google IMA CSAI** - Google IMA requests and sequences client-side ads.
-- **Google IMA SSAI** - Google DAI returns one stream with stitched ad breaks.
+| Example | Ad source | Midroll behavior |
+| --- | --- | --- |
+| **Plain / Manual CSAI** | Bundled JSON fixture | The host app schedules and plays the ad pod. |
+| **Google IMA CSAI** | Hosted VAST request | Google IMA requests and sequences client-side ads. |
+| **Google IMA SSAI** | Google DAI VOD request | Google DAI returns one stream with stitched ad breaks. |
 
 The examples intentionally duplicate their player, ad, and `TruexAdRenderer` code. Choose one example and read it from top to bottom without tracing a shared framework.
 
-## Requirements
+## TrueX and IDVx
+
+Both formats use Infillion's interactive ad renderer, but they differ in how the viewer enters the experience and what happens afterward:
+
+- **TrueX** is opt-in. The viewer may choose an interactive engagement instead of the publisher's regular ad break. `AD_FREE_POD` records that the viewer earned the reward; after `AD_COMPLETED`, the host app skips the rest of that ad pod.
+- **IDVx** starts its interactive video experience directly. It does not award an ad-free pod, so the host app resumes the normal ad flow when the experience finishes.
+
+If a TrueX viewer does not opt in, or an interactive experience is unavailable, the publisher's normal ad flow continues.
+
+See [What are Infillion Ads?](https://github.com/socialvibe/infillion-ads-integration-docs/blob/main/docs/overview/what-are-infillion-ads.md) for broader product context.
+
+## Integration flow
+
+The exact player and ad-SDK APIs vary by insertion model, but every example follows the same high-level flow:
+
+1. Add the TrueX renderer and the player or ad-SDK dependencies.
+2. Provide a `ViewGroup` above the video player where the renderer can display the interactive experience.
+3. Detect an Infillion ad from its ad-system identifier (`trueX` or `IDVx`).
+4. Extract the renderer payload from the ad metadata.
+5. Pause or coordinate the underlying content/ad playback and, when required, move past the placeholder media.
+6. Start the renderer with the payload, renderer container, and the correct TrueX/IDVx mode.
+7. For TrueX, treat `AD_FREE_POD` as an indicator that the remaining ads in the current pod should be skipped after successful completion.
+8. On `AD_COMPLETED`, apply any earned ad-free-pod reward; on `AD_ERROR` or `NO_ADS_AVAILABLE`, continue the normal fallback ad flow.
+9. Release the renderer and player resources with the activity lifecycle.
+
+For platform guidance beyond these runnable examples, see the [official Android integration documentation](https://socialvibe.github.io/infillion-ads-integration-docs/platforms/android/). It is still being completed.
+
+## Run the examples
+
+### Requirements
 
 - Android Studio with JDK 17
 - Android SDK 35
 - Android TV device or emulator running API 28 or newer
 - Network access to the sample media, Google IMA, and the TrueX renderer Maven repository
 
-## Run
+### Android Studio
 
 1. Open the repository in Android Studio.
 2. Create or select an Android TV virtual device.
 3. Run the `app` configuration.
 4. Use the D-pad to focus an integration and press the center/select key.
 
-From a terminal:
+### Command line
 
 ```shell
 ./gradlew assembleDebug
 ```
 
-Install the APK from `app/build/outputs/apk/debug/app-debug.apk`.
+Install `app/build/outputs/apk/debug/app-debug.apk` on an Android TV device or emulator.
 
-Run the unit tests:
-
-```shell
-./gradlew testDebugUnitTest
-```
-
-## What happens
-
-Each screen begins content playback and exposes its ad state in the upper-left status panel.
-
-| Example | Ad source | Midroll behavior |
-| --- | --- | --- |
-| Manual CSAI | Bundled JSON fixture | The app triggers a short reference midroll and owns pod playback. |
-| IMA CSAI | Hosted VAST request | The app asks IMA for a client-side pod at the reference midroll. |
-| IMA SSAI | Google DAI VOD request | IMA returns a stitched stream and reports its ad periods. |
-
-Interactive ads are identified by their `AdSystem`:
-
-- **TrueX** presents a choice card. `AD_FREE_POD` records earned credit; the app waits for a renderer terminal event before skipping the rest of the break.
-- **IDVx** begins its interactive experience directly. It never earns pod credit and playback continues with the next ad.
-
-`AD_COMPLETED`, `AD_ERROR`, and `NO_ADS_AVAILABLE` are terminal renderer events. Each example then either skips the break when TrueX credit was earned or follows its own fallback path.
+Each example begins content playback and displays its current content, ad-request, linear-ad, interactive-ad, recovery, or error state in the upper-left status panel.
 
 ## Sample configuration
 
@@ -77,33 +87,4 @@ Each guide names the package to copy, the key event transitions, and the product
 
 This is documentation that runs, not a production player framework. It does not include analytics, consent, production identity, retry policy, remote configuration, E2E automation, or publisher-specific VMAP/VAST parsing. Error and fallback states are visible so developers can observe the integration contract.
 
-## Development workflow
-
-After the initial local bootstrap is pushed, all changes start from current `main` on a `feature/<TICKET>/<description>` or `bugfix/<TICKET>/<description>` branch. Each pull request must:
-
-1. Include the required implementation and unit tests.
-2. Increment `VERSION_CODE` by one in `gradle.properties`.
-3. Increment the patch component of `VERSION_NAME` by one.
-4. Pass the pull-request workflow.
-5. Receive the approvals required by company policy before a manual merge to `main`.
-
-## Versioning and releases
-
-`gradle.properties` is the version source of truth:
-
-```properties
-VERSION_CODE=1
-VERSION_NAME=1.0.0
-```
-
-`VERSION_CODE` is Android's monotonically increasing internal version. `VERSION_NAME` is the public semantic version.
-
-The pull-request workflow runs `testDebugUnitTest` and verifies both version increments. When a pull request is closed as merged into `main`, the release workflow creates tag `v<VERSION_NAME>` and a GitHub release with generated release notes.
-
-## Commits
-
-Commit messages and pull request titles use `<TICKET> - <MESSAGE>`, for example:
-
-```text
-PI-3486 - Add Android TV TrueX reference app
-```
+See [CONTRIBUTING.md](CONTRIBUTING.md) for build, test, versioning, and pull-request instructions.

@@ -14,7 +14,7 @@ Copy the complete `imacsai` package and `activity_ima_csai.xml`. Its IMA adapter
 4. `CONTENT_PAUSE_REQUESTED` stores the content position; `CONTENT_RESUME_REQUESTED` reloads content at that position.
 5. On `STARTED`, the controller checks `AdSystem`. Normal linear ads remain under IMA control.
 6. A TrueX or IDVx placeholder pauses IMA. The app extracts trafficking parameters or a valid config URL, hides the player, and starts `TruexAdRenderer`.
-7. On a terminal renderer event, TrueX credit discards the active IMA break. Without credit, the placeholder finishes and IMA continues the remaining ads. IDVx always continues.
+7. `AD_FREE_POD` records TrueX credit. On `AD_COMPLETED`, earned credit discards the active IMA break. Without successful completion, the placeholder finishes and IMA continues the remaining ads. IDVx always continues.
 
 ## Important IMA events
 
@@ -36,4 +36,3 @@ Malformed interactive payloads are visible errors. The example resumes IMA's fal
 - Decide how playback state survives process death and device interruptions.
 - Replace reference status text with publisher UI or telemetry.
 - Test the publisher's real VMAP/VAST redirects, pod order, and fallback media.
-

@@ -114,20 +114,20 @@ class ManualCsaiActivity : AppCompatActivity(), ManualTruexRenderer.Listener {
         runCatching { newRenderer.start(binding.rendererContainer, ad) }
             .onFailure { error ->
                 showStatus("Renderer setup failed: ${error.message}. Continuing fallback pod.")
-                completeInteractiveAd(receivedCredit = false)
+                completeInteractiveAd(shouldSkipPod = false)
             }
     }
 
-    // [3] Credit is applied only after TAR reports a terminal event.
-    override fun onTerminal(receivedCredit: Boolean, event: TruexAdEvent) {
+    // [3] AD_FREE_POD credit is applied only when TAR later reports AD_COMPLETED.
+    override fun onTerminal(shouldSkipPod: Boolean, event: TruexAdEvent) {
         showStatus("Renderer finished: $event")
-        completeInteractiveAd(receivedCredit)
+        completeInteractiveAd(shouldSkipPod)
     }
 
-    private fun completeInteractiveAd(receivedCredit: Boolean) {
+    private fun completeInteractiveAd(shouldSkipPod: Boolean) {
         val ad = currentAdOrNull() ?: return
         disposeRenderer()
-        if (shouldSkipRemainingPod(ad.type, receivedCredit)) {
+        if (shouldSkipRemainingPod(ad.type, shouldSkipPod)) {
             finishAdBreak("TrueX credit earned • remaining ads skipped")
             return
         }

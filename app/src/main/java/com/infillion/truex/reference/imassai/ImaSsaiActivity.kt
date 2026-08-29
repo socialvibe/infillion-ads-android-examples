@@ -108,23 +108,23 @@ class ImaSsaiActivity : AppCompatActivity(),
         runCatching { newRenderer.start(binding.adContainer, payload, type) }
             .onFailure { error ->
                 showStatus("Renderer setup failed: ${error.message} • continuing stream")
-                finishInteractive(receivedCredit = false)
+                finishInteractive(shouldSkipPod = false)
             }
     }
 
-    // [3] TrueX credit seeks beyond the stitched break; IDVx and fallback resume its pod.
-    override fun onTerminal(receivedCredit: Boolean, event: TruexAdEvent) {
+    // [3] AD_FREE_POD credit seeks beyond the stitched break only after AD_COMPLETED.
+    override fun onTerminal(shouldSkipPod: Boolean, event: TruexAdEvent) {
         showStatus("Renderer finished: $event")
-        finishInteractive(receivedCredit)
+        finishInteractive(shouldSkipPod)
     }
 
-    private fun finishInteractive(receivedCredit: Boolean) {
+    private fun finishInteractive(shouldSkipPod: Boolean) {
         val type = currentInteractiveType
         disposeRenderer()
         currentInteractiveType = null
         videoStreamPlayer.show()
 
-        if (type == ImaSsaiAdType.TRUEX && receivedCredit) {
+        if (type == ImaSsaiAdType.TRUEX && shouldSkipPod) {
             val currentAd = streamManager?.currentAd
             val pod = currentAd?.adPodInfo
             val progress = streamManager?.adProgressInfo
