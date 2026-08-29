@@ -12,8 +12,8 @@ android {
         applicationId = "com.infillion.truex.reference"
         minSdk = 28
         targetSdk = 35
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = providers.gradleProperty("VERSION_CODE").get().toInt()
+        versionName = providers.gradleProperty("VERSION_NAME").get()
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }

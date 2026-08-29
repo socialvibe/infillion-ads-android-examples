@@ -30,6 +30,12 @@ From a terminal:
 
 Install the APK from `app/build/outputs/apk/debug/app-debug.apk`.
 
+Run the unit tests:
+
+```shell
+./gradlew testDebugUnitTest
+```
+
 ## What happens
 
 Each screen begins content playback and exposes its ad state in the upper-left status panel.
@@ -71,3 +77,33 @@ Each guide names the package to copy, the key event transitions, and the product
 
 This is documentation that runs, not a production player framework. It does not include analytics, consent, production identity, retry policy, remote configuration, E2E automation, or publisher-specific VMAP/VAST parsing. Error and fallback states are visible so developers can observe the integration contract.
 
+## Development workflow
+
+After the initial local bootstrap is pushed, all changes start from current `main` on a `feature/<TICKET>/<description>` or `bugfix/<TICKET>/<description>` branch. Each pull request must:
+
+1. Include the required implementation and unit tests.
+2. Increment `VERSION_CODE` by one in `gradle.properties`.
+3. Increment the patch component of `VERSION_NAME` by one.
+4. Pass the pull-request workflow.
+5. Receive the approvals required by company policy before a manual merge to `main`.
+
+## Versioning and releases
+
+`gradle.properties` is the version source of truth:
+
+```properties
+VERSION_CODE=1
+VERSION_NAME=1.0.0
+```
+
+`VERSION_CODE` is Android's monotonically increasing internal version. `VERSION_NAME` is the public semantic version.
+
+The pull-request workflow runs `testDebugUnitTest` and verifies both version increments. When a pull request is closed as merged into `main`, the release workflow creates tag `v<VERSION_NAME>` and a GitHub release with generated release notes.
+
+## Commits
+
+Commit messages and pull request titles use `<TICKET> - <MESSAGE>`, for example:
+
+```text
+PI-3486 - Add Android TV TrueX reference app
+```

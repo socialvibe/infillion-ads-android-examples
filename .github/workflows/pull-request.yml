@@ -1,0 +1,84 @@
+name: Pull request
+
+on:
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    name: Unit tests and version
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Validate version increment
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          set -euo pipefail
+
+          property_from_file() {
+            awk -F= -v key="$1" '$1 == key { print $2 }' gradle.properties
+          }
+
+          base_properties="$(git show "${BASE_SHA}:gradle.properties")"
+          property_from_base() {
+            printf '%s\n' "$base_properties" | awk -F= -v key="$1" '$1 == key { print $2 }'
+          }
+
+          base_code="$(property_from_base VERSION_CODE)"
+          current_code="$(property_from_file VERSION_CODE)"
+          base_name="$(property_from_base VERSION_NAME)"
+          current_name="$(property_from_file VERSION_NAME)"
+
+          [[ "$base_code" =~ ^[0-9]+$ && "$current_code" =~ ^[0-9]+$ ]] || {
+            echo "VERSION_CODE must be an integer."
+            exit 1
+          }
+          (( current_code == base_code + 1 )) || {
+            echo "VERSION_CODE must increase by exactly one: ${base_code} -> $((base_code + 1))."
+            exit 1
+          }
+
+          [[ "$base_name" =~ ^([0-9]+)\.([0-9]+)\.([0-9]+)$ ]] || {
+            echo "Base VERSION_NAME must use MAJOR.MINOR.PATCH."
+            exit 1
+          }
+          base_major="${BASH_REMATCH[1]}"
+          base_minor="${BASH_REMATCH[2]}"
+          base_patch="${BASH_REMATCH[3]}"
+
+          [[ "$current_name" =~ ^([0-9]+)\.([0-9]+)\.([0-9]+)$ ]] || {
+            echo "VERSION_NAME must use MAJOR.MINOR.PATCH."
+            exit 1
+          }
+          current_major="${BASH_REMATCH[1]}"
+          current_minor="${BASH_REMATCH[2]}"
+          current_patch="${BASH_REMATCH[3]}"
+
+          (( current_major == base_major &&
+             current_minor == base_minor &&
+             current_patch == base_patch + 1 )) || {
+            echo "VERSION_NAME must increase by exactly one patch: ${base_name} -> ${base_major}.${base_minor}.$((base_patch + 1))."
+            exit 1
+          }
+
+      - name: Run unit tests
+        run: ./gradlew testDebugUnitTest

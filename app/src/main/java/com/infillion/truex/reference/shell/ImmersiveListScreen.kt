@@ -7,6 +7,7 @@ import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -129,6 +130,7 @@ fun ImmersiveListScreen(
 
             Spacer(modifier = Modifier.height(36.dp))
             LazyRow(
+                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
                 horizontalArrangement = Arrangement.spacedBy(22.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
@@ -155,25 +157,30 @@ private fun ExampleCard(
     var focused by remember { androidx.compose.runtime.mutableStateOf(false) }
     val focusRequester = remember { FocusRequester() }
     val shape = RoundedCornerShape(20.dp)
+    val borderWidth = if (focused) 4.dp else 1.dp
+    val innerShape = RoundedCornerShape(20.dp - borderWidth)
     val borderBrush = Brush.linearGradient(listOf(BloomPurple, BloomPink, BloomOrange))
 
     Box(
         modifier = Modifier
-            .size(width = 292.dp, height = 164.dp)
+            .size(width = 252.dp, height = 142.dp)
             .graphicsLayer {
                 scaleX = if (focused) 1.08f else 1f
                 scaleY = if (focused) 1.08f else 1f
             }
             .clip(shape)
-            .background(if (focused) borderBrush else Brush.linearGradient(listOf(Color.Transparent, Color.Transparent)))
-            .padding(if (focused) 4.dp else 1.dp)
-            .clip(shape)
-            .background(CharcoalDeep)
-            .border(
-                width = if (focused) 0.dp else 1.dp,
-                color = FogGray.copy(alpha = 0.2f),
-                shape = shape,
+            .background(
+                if (focused) {
+                    borderBrush
+                } else {
+                    Brush.linearGradient(
+                        listOf(FogGray.copy(alpha = 0.2f), FogGray.copy(alpha = 0.2f)),
+                    )
+                },
             )
+            .padding(borderWidth)
+            .clip(innerShape)
+            .background(CharcoalDeep)
             .focusRequester(focusRequester)
             .onFocusChanged {
                 focused = it.isFocused
