@@ -72,8 +72,26 @@ class ManualCsaiActivity : AppCompatActivity(), ManualTruexRenderer.Listener {
             binding.playerView.player = it
             it.addListener(playerListener)
         }
-        playContent(0L)
-        binding.root.post(midrollCheck)
+        showStatus("Loading VAST ad parameters")
+        Thread(::resolveVastAndStart, "manual-vast-load").start()
+    }
+
+    private fun resolveVastAndStart() {
+        val resolved = adBreak.copy(
+            ads = adBreak.ads.map { ad ->
+                val url = ad.vastUrl ?: return@map ad
+                runCatching { ManualVastPayloadParser.load(url) }
+                    .getOrNull()
+                    ?.let { ad.copy(adParameters = it) }
+                    ?: ad
+            },
+        )
+        runOnUiThread {
+            if (isFinishing) return@runOnUiThread
+            adBreak = resolved
+            playContent(0L)
+            binding.root.post(midrollCheck)
+        }
     }
 
     // [1] The host app owns the content timeline and decides when the ad break starts.

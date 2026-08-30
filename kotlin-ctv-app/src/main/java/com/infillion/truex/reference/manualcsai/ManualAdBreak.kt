@@ -14,8 +14,9 @@ internal data class ManualAd(
     val id: String,
     val type: ManualAdType,
     val mediaUrl: String,
-    val configUrl: String?,
+    val vastUrl: String?,
     val durationMs: Long,
+    val adParameters: JSONObject? = null,
 )
 
 internal data class ManualAdBreak(
@@ -27,6 +28,10 @@ internal data class ManualAdBreak(
 internal object ManualAdBreakParser {
     fun parse(context: Context, @RawRes resourceId: Int): ManualAdBreak {
         val json = context.resources.openRawResource(resourceId).bufferedReader().use { it.readText() }
+        return parse(json)
+    }
+
+    fun parse(json: String): ManualAdBreak {
         val root = JSONObject(json)
         val adsJson = root.getJSONArray("ads")
         val ads = buildList {
@@ -42,7 +47,7 @@ internal object ManualAdBreakParser {
                             else -> ManualAdType.LINEAR
                         },
                         mediaUrl = item.getString("mediaUrl"),
-                        configUrl = item.optString("configUrl").takeIf(String::isNotBlank),
+                        vastUrl = item.optString("vastUrl").takeIf(String::isNotBlank),
                         durationMs = item.getLong("durationSeconds") * 1_000L,
                     ),
                 )

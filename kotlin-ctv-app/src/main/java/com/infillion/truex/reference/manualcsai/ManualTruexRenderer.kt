@@ -55,13 +55,13 @@ internal class ManualTruexRenderer(
     }
 
     fun start(container: ViewGroup, ad: ManualAd) {
-        val configUrl = requireNotNull(ad.configUrl) { "Interactive ad ${ad.id} has no config URL" }
+        val adParameters = requireNotNull(ad.adParameters) { "Interactive ad ${ad.id} has no ad parameters" }
         val options = TruexAdOptions().apply {
             supportsUserCancelStream = ad.type == ManualAdType.TRUEX
             fallbackAdvertisingId = UUID.randomUUID().toString()
             enableWebViewDebugging = BuildConfig.DEBUG
         }
-        renderer.init(configUrl, options)
+        renderer.init(adParameters, options)
         renderer.start(container)
     }
 
