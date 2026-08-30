@@ -16,5 +16,5 @@ dependencyResolutionManagement {
 }
 
 rootProject.name = "TrueXAndroidExamples"
-include(":app")
+include(":kotlin-ctv-app")
 

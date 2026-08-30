@@ -10,9 +10,9 @@ Add a second, independently installable Android TV application for developers wh
 
 ## Decisions
 
-- Rename the current `app` module to `kotlin-app`.
-- Add a separate `java-app` Android application module.
-- Use Java, XML layouts, standard Android Views, and `RecyclerView` in `java-app`.
+- Rename the current `app` module to `kotlin-ctv-app`.
+- Add a separate `java-ctv-app` Android application module.
+- Use Java, XML layouts, standard Android Views, and `RecyclerView` in `java-ctv-app`.
 - Keep `LEANBACK_LAUNCHER` and the TV manifest feature because they identify TV applications; do not add Leanback UI components.
 - Give each app a distinct `applicationId` and launcher label so both APKs can be installed together.
 - Share root build configuration and version values only.
@@ -22,10 +22,10 @@ Add a second, independently installable Android TV application for developers wh
 
 ```text
 truex-android-examples/
-├── kotlin-app/
+├── kotlin-ctv-app/
 │   ├── build.gradle.kts
 │   └── src/
-├── java-app/
+├── java-ctv-app/
 │   ├── build.gradle.kts
 │   └── src/
 │       ├── main/
@@ -59,28 +59,28 @@ truex-android-examples/
 `settings.gradle.kts` will include both application modules:
 
 ```kotlin
-include(":kotlin-app")
-include(":java-app")
+include(":kotlin-ctv-app")
+include(":java-ctv-app")
 ```
 
 ## Implementation phases
 
 ### 1. Rename the existing module
 
-- Move `app/` to `kotlin-app/`.
-- Change `include(":app")` to `include(":kotlin-app")`.
+- Move `app/` to `kotlin-ctv-app/`.
+- Change `include(":app")` to `include(":kotlin-ctv-app")`.
 - Update README commands, APK paths, workflows, and documentation links.
 - Preserve the current package name, `applicationId`, behavior, and tests.
 
 Verification:
 
 ```shell
-./gradlew :kotlin-app:assembleDebug :kotlin-app:testDebugUnitTest
+./gradlew :kotlin-ctv-app:assembleDebug :kotlin-ctv-app:testDebugUnitTest
 ```
 
 ### 2. Create the Java application shell
 
-- Add `java-app` with the Android application plugin and Java 17.
+- Add `java-ctv-app` with the Android application plugin and Java 17.
 - Use the shared `VERSION_CODE` and `VERSION_NAME` properties.
 - Use a distinct application ID such as `com.infillion.truex.reference.java`.
 - Recreate the TV launcher with XML, a `RecyclerView`, standard focus handling, and the existing Infillion visual assets.

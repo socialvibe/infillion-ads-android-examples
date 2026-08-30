@@ -50,7 +50,7 @@ For platform guidance beyond these runnable examples, see the [official Android 
 
 1. Open the repository in Android Studio.
 2. Create or select an Android TV virtual device.
-3. Run the `app` configuration.
+3. Run the `kotlin-ctv-app` configuration.
 4. Use the D-pad to focus an integration and press the center/select key.
 
 ### Command line
@@ -59,7 +59,7 @@ For platform guidance beyond these runnable examples, see the [official Android 
 ./gradlew assembleDebug
 ```
 
-Install `app/build/outputs/apk/debug/app-debug.apk` on an Android TV device or emulator.
+Install `kotlin-ctv-app/build/outputs/apk/debug/kotlin-ctv-app-debug.apk` on an Android TV device or emulator.
 
 Each example begins content playback and displays its current content, ad-request, linear-ad, interactive-ad, recovery, or error state in the upper-left status panel.
 
