@@ -1,7 +1,6 @@
 package com.infillion.truex.reference.imacsai
 
 import android.content.Context
-import android.net.Uri
 import android.view.ViewGroup
 import com.infillion.truex.reference.BuildConfig
 import com.truex.adrenderer.IEventEmitter
@@ -15,7 +14,6 @@ internal class ImaCsaiTruexRenderer(
 ) {
     interface Listener {
         fun onTerminal(shouldSkipPod: Boolean, event: TruexAdEvent)
-        fun onPopup(uri: Uri)
         fun onCancelStream()
         fun onEvent(event: TruexAdEvent)
     }
@@ -23,14 +21,10 @@ internal class ImaCsaiTruexRenderer(
     private val renderer = TruexAdRenderer(context)
     private var receivedCredit = false
     private var terminalDelivered = false
-    private val handler = IEventEmitter.IEventHandler { event, data ->
+    private val handler = IEventEmitter.IEventHandler { event, _ ->
         listener.onEvent(event)
         when (event) {
             TruexAdEvent.AD_FREE_POD -> receivedCredit = true
-            TruexAdEvent.POPUP_WEBSITE -> {
-                val uri = (data["url"] as? String)?.let(Uri::parse)
-                if (uri?.scheme == "https" || uri?.scheme == "http") listener.onPopup(uri)
-            }
             TruexAdEvent.USER_CANCEL_STREAM -> listener.onCancelStream()
             TruexAdEvent.AD_COMPLETED,
             TruexAdEvent.AD_ERROR,

@@ -1,7 +1,5 @@
 package com.infillion.truex.reference.imassai
 
-import android.content.Intent
-import android.net.Uri
 import android.os.Bundle
 import androidx.appcompat.app.AppCompatActivity
 import com.google.ads.interactivemedia.v3.api.Ad
@@ -176,11 +174,6 @@ class ImaSsaiActivity : AppCompatActivity(),
 
     override fun onPlaybackError(error: androidx.media3.common.PlaybackException) {
         showStatus("Stream playback error: ${error.errorCodeName}")
-    }
-
-    override fun onPopup(uri: Uri) {
-        runCatching { startActivity(Intent(Intent.ACTION_VIEW, uri)) }
-            .onFailure { showStatus("No browser can open ${uri.host}") }
     }
 
     override fun onCancelStream() {

@@ -1,7 +1,5 @@
 package com.infillion.truex.reference.imacsai
 
-import android.content.Intent
-import android.net.Uri
 import android.os.Bundle
 import android.view.View
 import androidx.appcompat.app.AppCompatActivity
@@ -173,11 +171,6 @@ class ImaCsaiActivity : AppCompatActivity(), ImaCsaiTruexRenderer.Listener {
         binding.playerView.visibility = View.VISIBLE
         videoPlayer.resumeContent()
         showStatus("Content resumed")
-    }
-
-    override fun onPopup(uri: Uri) {
-        runCatching { startActivity(Intent(Intent.ACTION_VIEW, uri)) }
-            .onFailure { showStatus("No browser can open ${uri.host}") }
     }
 
     override fun onCancelStream() {

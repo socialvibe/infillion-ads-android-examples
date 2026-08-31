@@ -19,20 +19,21 @@ Copy the complete `manualcsai` package, `activity_manual_csai.xml`, and `manual_
 
 ## Renderer contract
 
-The example creates `TruexAdOptions` next to the renderer:
+The activity creates `TruexAdRenderer` and `TruexAdOptions` itself:
 
 - `supportsUserCancelStream` is enabled for TrueX and disabled for IDVx.
-- A fallback advertising ID is generated for this reference run.
-- WebView debugging follows `BuildConfig.DEBUG`.
+- `appId` uses the application package name.
+- `enableWebViewDebugging` is debug-only (`BuildConfig.DEBUG`).
+- Advertising IDs are not set here. The ad-server `advertising-id` macro should already be in `AdParameters`; confirm that during integration certification.
 - `pause()`, `resume()`, `stop()`, listener removal, and renderer disposal follow the activity lifecycle.
 
-`POPUP_WEBSITE` is opened only when the renderer supplies a valid HTTP(S) URL. `USER_CANCEL_STREAM` closes the playback screen.
+`USER_CANCEL_STREAM` closes the playback screen. `POPUP_WEBSITE` is mobile-only and is not used on CTV.
 
 ## Replace in production
 
 - Replace the JSON fixture and sample VAST URLs with the publisher's VMAP/VAST or ad-server response.
 - Read `adParameters` from the metadata the host ad framework actually delivers.
 - Replace the sample content, placeholders, and fallback media.
-- Supply the publisher's advertising identity and privacy/consent values.
+- Confirm the ad-server `advertising-id` macro lands in `AdParameters` during integration certification.
 - Integrate the one-shot gate with the production timeline and persisted playback state.
 - Define production retry, telemetry, and renderer-error policy.

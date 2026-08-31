@@ -1,24 +1,29 @@
 package com.infillion.truex.reference.manualcsai
 
-import android.content.Intent
-import android.net.Uri
 import android.os.Bundle
+import android.util.Log
 import android.view.View
 import androidx.appcompat.app.AppCompatActivity
 import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
+import com.infillion.truex.reference.BuildConfig
 import com.infillion.truex.reference.R
 import com.infillion.truex.reference.databinding.ActivityManualCsaiBinding
+import com.truex.adrenderer.IEventEmitter
 import com.truex.adrenderer.TruexAdEvent
+import com.truex.adrenderer.TruexAdOptions
+import com.truex.adrenderer.TruexAdRenderer
 
-class ManualCsaiActivity : AppCompatActivity(), ManualTruexRenderer.Listener {
+class ManualCsaiActivity : AppCompatActivity() {
     private lateinit var binding: ActivityManualCsaiBinding
     private lateinit var player: ExoPlayer
     private lateinit var adBreak: ManualAdBreak
     private lateinit var midrollGate: MidrollGate
-    private var renderer: ManualTruexRenderer? = null
+    private var truexAdRenderer: TruexAdRenderer? = null
+    private var truexAdCreditReceived = false
+    private var truexAdTerminalEvent = false
     private var contentPositionMs = 0L
     private var currentAdIndex = -1
     private var playingAdPod = false
@@ -28,7 +33,7 @@ class ManualCsaiActivity : AppCompatActivity(), ManualTruexRenderer.Listener {
         override fun onPlaybackStateChanged(playbackState: Int) {
             if (playbackState == Player.STATE_READY && playingAdPod) {
                 val ad = currentAdOrNull() ?: return
-                if (ad.type != ManualAdType.LINEAR && renderer == null) {
+                if (ad.type != ManualAdType.LINEAR && truexAdRenderer == null) {
                     val end = player.duration.takeIf { it > 200L } ?: ad.durationMs
                     player.seekTo(end - 100L)
                     player.pause()
@@ -58,6 +63,44 @@ class ManualCsaiActivity : AppCompatActivity(), ManualTruexRenderer.Listener {
                 startAdBreak()
             }
             if (!isFinishing) binding.root.postDelayed(this, 250L)
+        }
+    }
+
+    private val truexAdEventHandler = IEventEmitter.IEventHandler { event, data ->
+        Log.i(TAG, "TruexAdEvent $event data=$data")
+        when (event) {
+            // Main flow
+            TruexAdEvent.AD_FETCH_COMPLETED -> Unit // init ad request finished; truex renderer is ready to present
+            TruexAdEvent.AD_STARTED -> { // truex renderer starts showing
+                showStatus("Interactive ad • $event")
+            }
+            TruexAdEvent.AD_DISPLAYED -> Unit // truex renderer UX assets are loaded and visible
+            TruexAdEvent.AD_COMPLETED -> { // terminal: truex renderer finished; resume playback
+                finishTruexAd(event)
+            }
+            TruexAdEvent.AD_ERROR -> { // terminal: unrecoverable truex renderer error
+                finishTruexAd(event)
+            }
+            TruexAdEvent.NO_ADS_AVAILABLE -> { // terminal: no ads available
+                finishTruexAd(event)
+            }
+            TruexAdEvent.AD_FREE_POD -> { // credit earned; wait for a terminal event before skipping the pod
+                truexAdCreditReceived = true
+            }
+            TruexAdEvent.USER_CANCEL_STREAM -> { // terminal: viewer wants to leave the stream
+                showStatus("Viewer cancelled the stream")
+                finish()
+            }
+            // Informative
+            TruexAdEvent.OPT_IN -> { // viewer chose the interactive ad
+                showStatus("Interactive ad • $event")
+            }
+            TruexAdEvent.OPT_OUT -> { // viewer chose linear ads, or the choice-card timer expired
+                showStatus("Interactive ad • $event")
+            }
+            TruexAdEvent.USER_CANCEL -> Unit // backed out of the interactive unit after opt-in
+            TruexAdEvent.VIDEO_EVENT -> Unit // video progress inside the unit; not required for this app
+            else -> Unit
         }
     }
 
@@ -125,23 +168,50 @@ class ManualCsaiActivity : AppCompatActivity(), ManualTruexRenderer.Listener {
 
     // [2] Interactive placeholders pause at their end while TAR owns the overlay.
     private fun showInteractiveAd(ad: ManualAd) {
+        val adParameters = ad.adParameters
+        if (adParameters == null) {
+            showStatus("Renderer setup failed: Interactive ad ${ad.id} has no ad parameters. Continuing fallback pod.")
+            completeInteractiveAd(shouldSkipPod = false)
+            return
+        }
         binding.playerView.visibility = View.INVISIBLE
         binding.rendererContainer.visibility = View.VISIBLE
-        val newRenderer = ManualTruexRenderer(this, this)
-        renderer = newRenderer
-        runCatching { newRenderer.start(binding.rendererContainer, ad) }
+        truexAdCreditReceived = false
+        truexAdTerminalEvent = false
+        val newRenderer = TruexAdRenderer(this).also { tar ->
+            tar.addEventListener(null, truexAdEventHandler)
+            tar.init(
+                adParameters,
+                TruexAdOptions().apply {
+                    // TrueX: back on the choice card can fire USER_CANCEL_STREAM.
+                    // IDVx: leave false so back is opt-out / AD_COMPLETED.
+                    supportsUserCancelStream = ad.type == ManualAdType.TRUEX
+                    // Internal tracking. TAR uses the host package name when unset.
+                    appId = packageName
+                    // Debug only. Chrome inspect via chrome://inspect. Do not enable in production.
+                    enableWebViewDebugging = BuildConfig.DEBUG
+                    // Do not set userAdvertisingId / fallbackAdvertisingId.
+                    // The ad-server advertising-id macro should already be in AdParameters.
+                    // Confirm that during integration certification.
+                },
+            )
+        }
+        truexAdRenderer = newRenderer
+        runCatching { newRenderer.start(binding.rendererContainer) }
             .onFailure { error ->
                 showStatus("Renderer setup failed: ${error.message}. Continuing fallback pod.")
                 completeInteractiveAd(shouldSkipPod = false)
             }
     }
 
-    // [3] AD_FREE_POD credit is applied only when TAR later reports AD_COMPLETED.
-    override fun onTerminal(shouldSkipPod: Boolean, event: TruexAdEvent) {
+    private fun finishTruexAd(event: TruexAdEvent) {
+        if (truexAdTerminalEvent) return
+        truexAdTerminalEvent = true
         showStatus("Renderer finished: $event")
-        completeInteractiveAd(shouldSkipPod)
+        completeInteractiveAd(shouldSkipPod = truexAdCreditReceived && event == TruexAdEvent.AD_COMPLETED)
     }
 
+    // [3] AD_FREE_POD credit is applied only when TAR later reports AD_COMPLETED.
     private fun completeInteractiveAd(shouldSkipPod: Boolean) {
         val ad = currentAdOrNull() ?: return
         disposeRenderer()
@@ -179,40 +249,27 @@ class ManualCsaiActivity : AppCompatActivity(), ManualTruexRenderer.Listener {
 
     private fun currentAdOrNull(): ManualAd? = adBreak.ads.getOrNull(currentAdIndex)
 
-    override fun onPopup(uri: Uri) {
-        runCatching { startActivity(Intent(Intent.ACTION_VIEW, uri)) }
-            .onFailure { showStatus("No browser can open ${uri.host}") }
-    }
-
-    override fun onCancelStream() {
-        showStatus("Viewer cancelled the stream")
-        finish()
-    }
-
-    override fun onEvent(event: TruexAdEvent) {
-        if (event == TruexAdEvent.AD_STARTED || event == TruexAdEvent.OPT_IN || event == TruexAdEvent.OPT_OUT) {
-            showStatus("Interactive ad • $event")
-        }
-    }
-
     private fun showStatus(message: String) {
         binding.statusText.text = message
     }
 
     private fun disposeRenderer() {
-        renderer?.destroy()
-        renderer = null
+        truexAdRenderer?.removeEventListener(null, truexAdEventHandler)
+        truexAdRenderer?.stop()
+        truexAdRenderer = null
+        truexAdCreditReceived = false
+        truexAdTerminalEvent = false
         binding.rendererContainer.removeAllViews()
         binding.rendererContainer.visibility = View.GONE
     }
 
     override fun onResume() {
         super.onResume()
-        if (renderer != null) renderer?.resume() else player.play()
+        if (truexAdRenderer != null) truexAdRenderer?.resume() else player.play()
     }
 
     override fun onPause() {
-        renderer?.pause()
+        truexAdRenderer?.pause()
         player.pause()
         super.onPause()
     }
@@ -227,6 +284,7 @@ class ManualCsaiActivity : AppCompatActivity(), ManualTruexRenderer.Listener {
     }
 
     private companion object {
+        const val TAG = "ManualCsai"
         const val CONTENT_URL = "https://ctv.truex.com/assets/reference-app-stream-no-ads-720p.mp4"
     }
 }
