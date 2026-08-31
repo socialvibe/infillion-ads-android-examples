@@ -23,14 +23,20 @@ See [What are Infillion Ads?](https://github.com/socialvibe/infillion-ads-integr
 
 ## Integration flow
 
+Publishers:
+
+- Get TrueX and IDVx tags (VAST URLs) from Infillion contacts.
+- Target those tags in the publisher ad server, CSAI, or SSAI stack.
+- Confirm the tag reaches the app: ad-system `trueX` / `IDVx` and the renderer payload.
+
 The exact player and ad-SDK APIs vary by insertion model, but every example follows the same high-level flow:
 
 1. Add the TrueX renderer and the player or ad-SDK dependencies.
 2. Provide a `ViewGroup` above the video player where the renderer can display the interactive experience.
 3. Detect an Infillion ad from its ad-system identifier (`trueX` or `IDVx`).
-4. Extract the renderer payload from the ad metadata.
+4. Read `adParameters` from the ad metadata. How that JSON arrives depends on the host app and ad framework; this repo does not control that path.
 5. Pause or coordinate the underlying content/ad playback and, when required, move past the placeholder media.
-6. Start the renderer with the payload, renderer container, and the correct TrueX/IDVx mode.
+6. Instantiate `TruexAdRenderer` with that JSON, the renderer container, and the correct TrueX/IDVx mode.
 7. For TrueX, treat `AD_FREE_POD` as an indicator that the remaining ads in the current pod should be skipped after successful completion.
 8. On `AD_COMPLETED`, apply any earned ad-free-pod reward; on `AD_ERROR` or `NO_ADS_AVAILABLE`, continue the normal fallback ad flow.
 9. Release the renderer and player resources with the activity lifecycle.
@@ -50,7 +56,7 @@ For platform guidance beyond these runnable examples, see the [official Android 
 
 1. Open the repository in Android Studio.
 2. Create or select an Android TV virtual device.
-3. Run the `app` configuration.
+3. Run the `kotlin-ctv-app` configuration.
 4. Use the D-pad to focus an integration and press the center/select key.
 
 ### Command line
@@ -59,7 +65,7 @@ For platform guidance beyond these runnable examples, see the [official Android 
 ./gradlew assembleDebug
 ```
 
-Install `app/build/outputs/apk/debug/app-debug.apk` on an Android TV device or emulator.
+Install `kotlin-ctv-app/build/outputs/apk/debug/kotlin-ctv-app-debug.apk` on an Android TV device or emulator.
 
 Each example begins content playback and displays its current content, ad-request, linear-ad, interactive-ad, recovery, or error state in the upper-left status panel.
 

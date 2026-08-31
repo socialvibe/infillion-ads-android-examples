@@ -9,6 +9,7 @@ ima = "3.35.1"
 media3 = "1.4.1"
 tvMaterial = "1.0.0"
 junit = "4.13.2"
+json = "20240303"
 
 [libraries]
 androidx-activity-compose = { module = "androidx.activity:activity-compose", version.ref = "activityCompose" }
@@ -28,6 +29,7 @@ androidx-media3-ui = { module = "androidx.media3:media3-ui", version.ref = "medi
 androidx-tv-material = { module = "androidx.tv:tv-material", version.ref = "tvMaterial" }
 google-ima = { module = "com.google.ads.interactivemedia.v3:interactivemedia", version.ref = "ima" }
 junit = { module = "junit:junit", version.ref = "junit" }
+org-json = { module = "org.json:json", version.ref = "json" }
 truex-renderer = { module = "com.truex:TruexAdRenderer-Android", version = "2.10.4" }
 
 [plugins]
