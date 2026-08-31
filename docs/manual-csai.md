@@ -21,7 +21,7 @@ Copy the complete `manualcsai` package, `activity_manual_csai.xml`, and `manual_
 
 The activity creates `TruexAdRenderer` and `TruexAdOptions` itself:
 
-- `supportsUserCancelStream` is enabled for TrueX and disabled for IDVx.
+- `supportsUserCancelStream` is enabled for TrueX and IDVx. Back then fires `USER_CANCEL_STREAM`. If it is false, TrueX choice-card Back is `OPT_OUT`; IDVx Back does nothing.
 - `appId` uses the application package name.
 - `enableWebViewDebugging` is debug-only (`BuildConfig.DEBUG`).
 - Advertising IDs are not set here. The ad-server `advertising-id` macro should already be in `AdParameters`; confirm that during integration certification.

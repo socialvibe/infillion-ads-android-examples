@@ -183,9 +183,10 @@ class ManualCsaiActivity : AppCompatActivity() {
             tar.init(
                 adParameters,
                 TruexAdOptions().apply {
-                    // TrueX: back on the choice card can fire USER_CANCEL_STREAM.
-                    // IDVx: leave false so back is opt-out / AD_COMPLETED.
-                    supportsUserCancelStream = ad.type == ManualAdType.TRUEX
+                    // IDVx: true → Back fires USER_CANCEL_STREAM. false → Back does nothing.
+                    // TrueX: true → Back on the choice card fires USER_CANCEL_STREAM.
+                    //        false → Back on the choice card fires OPT_OUT.
+                    supportsUserCancelStream = true
                     // Internal tracking. TAR uses the host package name when unset.
                     appId = packageName
                     // Debug only. Chrome inspect via chrome://inspect. Do not enable in production.
