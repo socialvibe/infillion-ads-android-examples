@@ -3,6 +3,7 @@ package com.infillion.truex.reference.manualcsai
 import android.os.Bundle
 import android.util.Log
 import android.view.View
+import android.webkit.WebView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackException
@@ -120,13 +121,15 @@ class ManualCsaiActivity : AppCompatActivity() {
     }
 
     private fun resolveVastAndStart() {
+        val userId = newReferenceUserId()
+        Log.i(TAG, "VAST user-id $userId")
         val resolved = adBreak.copy(
             ads = adBreak.ads.map { ad ->
-                val url = ad.vastUrl ?: return@map ad
+                val url = ad.vastUrl?.let { applyVastUserId(it, userId) } ?: return@map ad
                 runCatching { ManualVastPayloadParser.load(url) }
                     .getOrNull()
-                    ?.let { ad.copy(adParameters = it) }
-                    ?: ad
+                    ?.let { ad.copy(vastUrl = url, adParameters = it) }
+                    ?: ad.copy(vastUrl = url)
             },
         )
         runOnUiThread {
