@@ -6,14 +6,14 @@
       "id": "truex-interactive",
       "adSystem": "trueX",
       "mediaUrl": "https://media.truex.com/m/video/truexloadingplaceholder-30s.mp4",
-      "vastUrl": "https://get.truex.com/88ac681ba8d0458e413dc22374194ab9f60b6664/vast/generic?dimension_5=PI-2449-ctv-ad",
+      "vastUrl": "https://get.truex.com/88ac681ba8d0458e413dc22374194ab9f60b6664/vast/generic?dimension_5=PI-2449-ctv-ad&network_user_id=${user-id}",
       "durationSeconds": 30
     },
     {
       "id": "idvx-interactive",
       "adSystem": "IDVx",
       "mediaUrl": "https://media.truex.com/m/video/truexloadingplaceholder-30s.mp4",
-      "vastUrl": "https://qa-get.truex.com/eb9f752aeab71d71dd129da48ed98206e53a96dd/vast/idvx/generic",
+      "vastUrl": "https://qa-get.truex.com/eb9f752aeab71d71dd129da48ed98206e53a96dd/vast/idvx/generic?network_user_id=${user-id}",
       "durationSeconds": 30
     },
     {
@@ -30,4 +30,3 @@
     }
   ]
 }
-

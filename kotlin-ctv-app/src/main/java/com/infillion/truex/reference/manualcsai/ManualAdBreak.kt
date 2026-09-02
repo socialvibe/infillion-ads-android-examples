@@ -3,6 +3,7 @@ package com.infillion.truex.reference.manualcsai
 import android.content.Context
 import androidx.annotation.RawRes
 import org.json.JSONObject
+import java.util.UUID
 
 internal enum class ManualAdType {
     TRUEX,
@@ -75,3 +76,8 @@ internal class MidrollGate(private val timeOffsetMs: Long) {
 
 internal fun shouldSkipRemainingPod(type: ManualAdType, shouldSkipPod: Boolean): Boolean =
     type == ManualAdType.TRUEX && shouldSkipPod
+
+internal fun newReferenceUserId(): String = "ref-app-${UUID.randomUUID()}"
+
+internal fun applyVastUserId(url: String, userId: String): String =
+    url.replace("\${user-id}", userId).replace("#{user-id}", userId)

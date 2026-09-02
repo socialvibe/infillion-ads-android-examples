@@ -2,6 +2,7 @@ package com.infillion.truex.reference.manualcsai
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class ManualVastPayloadTest {
@@ -67,6 +68,32 @@ class ManualVastPayloadTest {
         assertEquals("https://get.truex.com/example/vast/generic", adBreak.ads[0].vastUrl)
         assertNull(adBreak.ads[1].vastUrl)
         assertEquals(ManualAdType.TRUEX, adBreak.ads[0].type)
+    }
+
+    @Test
+    fun appliesUserIdMacroOnLoad() {
+        val userId = "ref-app-test-id"
+        assertEquals(
+            "https://get.truex.com/example/vast/generic?network_user_id=$userId",
+            applyVastUserId(
+                "https://get.truex.com/example/vast/generic?network_user_id=\${user-id}",
+                userId,
+            ),
+        )
+        assertEquals(
+            "https://qa-get.truex.com/example/vast/idvx/generic?network_user_id=$userId",
+            applyVastUserId(
+                "https://qa-get.truex.com/example/vast/idvx/generic?network_user_id=#{user-id}",
+                userId,
+            ),
+        )
+    }
+
+    @Test
+    fun referenceUserIdHasPrefix() {
+        val userId = newReferenceUserId()
+        assertTrue(userId.startsWith("ref-app-"))
+        assertTrue(userId.length > "ref-app-".length)
     }
 
     private fun vastXml(

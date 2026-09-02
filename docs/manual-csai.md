@@ -8,7 +8,7 @@ Copy the complete `manualcsai` package, `activity_manual_csai.xml`, and `manual_
 
 ## Flow
 
-1. Before content starts, the activity fetches each interactive `vastUrl` and reads `<AdParameters>` JSON, or companion `StaticResource` JSON when `AdParameters` is absent.
+1. Before content starts, the activity replaces `${user-id}` / `#{user-id}` in each interactive `vastUrl` with `ref-app-{uuid}` (new uuid per load), fetches the VAST, and reads `<AdParameters>` JSON, or companion `StaticResource` JSON when `AdParameters` is absent.
 2. The activity starts Media3 content and keeps the native `PlayerView` controls available.
 3. A one-shot gate detects the short reference midroll.
 4. The activity stores the content position and plays the resolved pod.
