@@ -22,6 +22,18 @@ Run all unit tests:
 ./gradlew testDebugUnitTest
 ```
 
+Run functional UI tests on a connected Android TV device or emulator:
+
+```shell
+./gradlew runFunctionalUiTest
+```
+
+Or via standard `adb`:
+
+```shell
+adb shell am instrument -w -r -e class com.infillion.truex.reference.manualcsai.ManualCsaiTruexFlowTest com.infillion.truex.reference.test/androidx.test.runner.AndroidJUnitRunner
+```
+
 ## Branch workflow
 
 While this repository has no remote and is being bootstrapped locally, direct work on `main` is allowed.
@@ -30,7 +42,7 @@ After the initial remote push:
 
 1. Fast-forward local `main` to `origin/main`.
 2. Create `feature/<TICKET>/<description>` for a feature or `bugfix/<TICKET>/<description>` for a bug.
-3. Implement the change and its applicable unit tests.
+3. Implement the change and ensure all code-related changes pass both unit tests and functional UI tests.
 4. Increment the Android app version.
 5. Commit and open a pull request into `main`.
 6. Wait for the approvals required by company policy.
@@ -67,6 +79,6 @@ Pull request titles must be shorter than 80 characters.
 
 ## Pull requests and releases
 
-Use [.github/pull_request_template.md](.github/pull_request_template.md) for the pull request description. Every pull request runs all unit tests and validates the version increment.
+Use [.github/pull_request_template.md](.github/pull_request_template.md) for the pull request description. Every pull request must pass all unit tests and functional UI tests, and validate the version increment.
 
 After an approved pull request is manually merged to `main`, the release workflow creates tag `v<VERSION_NAME>` and a GitHub release with generated release notes.

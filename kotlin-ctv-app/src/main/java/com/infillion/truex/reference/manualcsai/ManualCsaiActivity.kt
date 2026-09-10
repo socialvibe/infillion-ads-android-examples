@@ -1,9 +1,13 @@
 package com.infillion.truex.reference.manualcsai
 
 import android.os.Bundle
+import android.os.Looper
 import android.util.Log
 import android.view.View
+import androidx.annotation.VisibleForTesting
 import androidx.appcompat.app.AppCompatActivity
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
 import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
@@ -28,6 +32,7 @@ class ManualCsaiActivity : AppCompatActivity() {
     private var currentAdIndex = -1
     private var playingAdPod = false
     private var waitingForInteractivePlaceholderEnd = false
+    private val testEventListeners = mutableListOf<(TruexAdEvent, Map<*, *>?) -> Unit>()
 
     private val playerListener = object : Player.Listener {
         override fun onPlaybackStateChanged(playbackState: Int) {
@@ -85,6 +90,7 @@ class ManualCsaiActivity : AppCompatActivity() {
     // Handles lifecycle and user-interaction events emitted by TruexAdRenderer.
     private val truexAdEventHandler = IEventEmitter.IEventHandler { event, data ->
         Log.i(TAG, "TruexAdEvent $event data=$data")
+        testEventListeners.forEach { it(event, data) }
         when (event) {
             // Main flow events
             TruexAdEvent.AD_FETCH_COMPLETED -> {
@@ -103,6 +109,7 @@ class ManualCsaiActivity : AppCompatActivity() {
                 // Do not skip immediately; wait for a terminal event (AD_COMPLETED) before skipping the pod.
                 Log.i(TAG, "TrueX credit earned (AD_FREE_POD); waiting for terminal event to skip remaining pod")
                 truexAdCreditReceived = true
+                isTruexAdCreditEarnedRecordForTesting = true
             }
             TruexAdEvent.USER_CANCEL_STREAM -> {
                 // The viewer pressed Back on the choice card or exit prompt to leave playback entirely.
@@ -162,10 +169,17 @@ class ManualCsaiActivity : AppCompatActivity() {
         val resolved = adBreak.copy(
             ads = adBreak.ads.map { ad ->
                 val url = ad.vastUrl?.let { applyVastUserId(it, userId) } ?: return@map ad
-                runCatching { ManualVastPayloadParser.load(url) }
-                    .getOrNull()
-                    ?.let { ad.copy(vastUrl = url, adParameters = it) }
-                    ?: ad.copy(vastUrl = url)
+                var payload: org.json.JSONObject? = null
+                for (attempt in 1..3) {
+                    payload = runCatching { ManualVastPayloadParser.load(url) }
+                        .onFailure { error ->
+                            Log.w(TAG, "Attempt $attempt: Failed to load VAST from $url: ${error.message}")
+                        }
+                        .getOrNull()
+                    if (payload != null) break
+                    Thread.sleep(500L)
+                }
+                payload?.let { ad.copy(vastUrl = url, adParameters = it) } ?: ad.copy(vastUrl = url)
             },
         )
         runOnUiThread {
@@ -257,6 +271,9 @@ class ManualCsaiActivity : AppCompatActivity() {
             return
         }
         truexAdTerminalEvent = true
+        if (event == TruexAdEvent.AD_COMPLETED) {
+            isTruexAdCompletedRecordForTesting = true
+        }
         Log.i(TAG, "finishTruexAd: event=$event, creditReceived=$truexAdCreditReceived")
         showStatus("Renderer finished: $event")
         completeInteractiveAd(shouldSkipPod = truexAdCreditReceived && event == TruexAdEvent.AD_COMPLETED)
@@ -352,6 +369,58 @@ class ManualCsaiActivity : AppCompatActivity() {
         binding.playerView.player = null
         player.release()
         super.onDestroy()
+    }
+
+    @VisibleForTesting
+    val isPlayingAdPodForTesting: Boolean get() = playingAdPod
+
+    @VisibleForTesting
+    var isTruexAdCreditEarnedRecordForTesting: Boolean = false
+        private set
+
+    @VisibleForTesting
+    var isTruexAdCompletedRecordForTesting: Boolean = false
+        private set
+
+    @VisibleForTesting
+    val isTruexAdCreditReceivedForTesting: Boolean get() = truexAdCreditReceived
+
+    @VisibleForTesting
+    val isTruexAdTerminalEventForTesting: Boolean get() = truexAdTerminalEvent
+
+    @VisibleForTesting
+    val currentContentPositionMsForTesting: Long
+        get() = if (::player.isInitialized) {
+            if (Looper.myLooper() == Looper.getMainLooper()) {
+                player.currentPosition
+            } else {
+                var position = 0L
+                val latch = CountDownLatch(1)
+                runOnUiThread {
+                    position = if (::player.isInitialized) player.currentPosition else 0L
+                    latch.countDown()
+                }
+                latch.await(500L, TimeUnit.MILLISECONDS)
+                position
+            }
+        } else 0L
+
+    @VisibleForTesting
+    val statusTextForTesting: String
+        get() = if (::binding.isInitialized) binding.statusText.text.toString() else ""
+
+    @VisibleForTesting
+    val isRendererContainerVisibleForTesting: Boolean
+        get() = if (::binding.isInitialized) binding.rendererContainer.visibility == View.VISIBLE else false
+
+    @VisibleForTesting
+    fun addTruexEventListenerForTesting(listener: (TruexAdEvent, Map<*, *>?) -> Unit) {
+        testEventListeners.add(listener)
+    }
+
+    @VisibleForTesting
+    fun removeTruexEventListenerForTesting(listener: (TruexAdEvent, Map<*, *>?) -> Unit) {
+        testEventListeners.remove(listener)
     }
 
     private companion object {
