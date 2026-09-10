@@ -19,11 +19,23 @@ class ManualVastPayloadTest {
     }
 
     @Test
-    fun prefersAdParametersOverCompanion() {
+    fun prefersCompanionOverAdParameters() {
         val payload = ManualVastPayloadParser.parse(
             vastXml(
                 linearAdParameters = """{"user_id":"from-ad-parameters"}""",
                 companionDataUrl = COMPANION_DATA_URL,
+            ),
+        )
+
+        assertEquals("from-companion", payload.getString("user_id"))
+    }
+
+    @Test
+    fun fallsBackToAdParametersWhenCompanionAbsent() {
+        val payload = ManualVastPayloadParser.parse(
+            vastXml(
+                linearAdParameters = """{"user_id":"from-ad-parameters"}""",
+                companionDataUrl = null,
             ),
         )
 

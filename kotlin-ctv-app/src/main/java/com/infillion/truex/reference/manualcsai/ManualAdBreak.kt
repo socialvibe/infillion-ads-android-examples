@@ -68,7 +68,9 @@ internal class MidrollGate(private val timeOffsetMs: Long) {
         private set
 
     fun shouldTrigger(positionMs: Long): Boolean {
-        if (triggered || positionMs < timeOffsetMs) return false
+        if (triggered || positionMs < timeOffsetMs) {
+            return false
+        }
         triggered = true
         return true
     }

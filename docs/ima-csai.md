@@ -1,20 +1,41 @@
 # Google IMA CSAI
 
-Use this example when Google IMA requests and sequences a client-side ad pod separately from the content stream.
+Use this example when Google IMA requests and sequences a client-side ad pod separately from the content
+stream.
 
 ## Copy
 
-Copy the complete `imacsai` package and `activity_ima_csai.xml`. Its IMA adapter, ExoPlayer, and renderer integration are intentionally local to the package.
+Copy the complete `imacsai` package and `activity_ima_csai.xml`. Its IMA adapter, ExoPlayer, and renderer
+integration are intentionally local to the package.
 
 ## Flow
 
 1. The activity begins content playback and exposes content progress to IMA.
 2. The short reference midroll issues an `AdsRequest` with the hosted sample VAST URL.
 3. The case-local `VideoAdPlayer` lets IMA load and control ad media through ExoPlayer.
-4. `CONTENT_PAUSE_REQUESTED` stores the content position; `CONTENT_RESUME_REQUESTED` reloads content at that position.
-5. On `STARTED`, the controller checks `AdSystem`. Normal linear ads remain under IMA control.
-6. A TrueX or IDVx placeholder pauses IMA. The app extracts trafficking parameters or a valid config URL, hides the player, and starts `TruexAdRenderer`.
-7. `AD_FREE_POD` records TrueX credit. On `AD_COMPLETED`, earned credit discards the active IMA break. Without successful completion, the placeholder finishes and IMA continues the remaining ads. IDVx always continues.
+4. `CONTENT_PAUSE_REQUESTED` stores the content position; `CONTENT_RESUME_REQUESTED` reloads content at that
+   position.
+5. On `STARTED`, the controller checks `AdSystem`. Normal linear ads remain under IMA control. TrueX ads must
+   be the first ad in the pod (`adPosition == 1`); later TrueX ads continue as linear playback.
+6. An eligible TrueX or IDVx placeholder pauses IMA. The app parses the JSON payload from companion ads or
+   trafficking parameters, hides the player, and starts `TruexAdRenderer`.
+7. `AD_FREE_POD` records TrueX credit. On `AD_COMPLETED`, earned credit discards the active IMA break
+   (`discardAdBreak()`). Without successful completion (opt-out, cancel, or error), the player seeks near the
+   end of the placeholder so IMA finishes it and continues the remaining fallback ads. IDVx always continues.
+
+## Renderer contract
+
+The activity creates `TruexAdRenderer` and `TruexAdOptions` itself:
+
+- `supportsUserCancelStream` is enabled for TrueX and IDVx. Back then fires `USER_CANCEL_STREAM`. If it is
+  false, TrueX choice-card Back is `OPT_OUT`; IDVx Back does nothing.
+- `appId` uses the application package name.
+- `enableWebViewDebugging` is debug-only (`BuildConfig.DEBUG`).
+- Advertising IDs are not set here. The ad-server `advertising-id` macro should already be in `AdParameters`;
+  confirm that during integration certification.
+- `pause()`, `resume()`, `stop()`, listener removal, and renderer disposal follow the activity lifecycle.
+
+`USER_CANCEL_STREAM` closes the playback screen. `POPUP_WEBSITE` is mobile-only and is not used on CTV.
 
 ## Important IMA events
 
@@ -27,7 +48,54 @@ Copy the complete `imacsai` package and `activity_ima_csai.xml`. Its IMA adapter
 | `ALL_ADS_COMPLETED` | Destroy the completed ad manager. |
 | Ad error | Show the error, release ad state, and deliberately recover content. |
 
-Malformed interactive payloads are visible errors. The example resumes IMA's fallback path rather than pretending the interactive ad succeeded.
+Malformed interactive payloads are visible errors. The example resumes IMA's fallback path rather than
+pretending the interactive ad succeeded.
+
+## VAST tag formats and ad parameters
+
+Depending on publisher ad serving setup, Infillion tags deliver ad parameters in one of two ways:
+
+1. **Companion tag**:
+   - TrueX: `/:placement_hash/vast/companion?<params>`
+   - IDVx: `/:placement_hash/vast/idvx/companion?<params>`
+   - `adParameters` is encoded as a base64 JSON `data:` URL inside
+     `<Companion apiFramework="truex"><StaticResource creativeType="application/json">`, which Google IMA
+     exposes through `ad.companionAds`:
+
+   ```xml
+   <Creative id="super_tag">
+     <CompanionAds required="all">
+       <Companion id="super_tag" width="960" height="540" apiFramework="truex">
+         <StaticResource creativeType="application/json">
+           <![CDATA[data:application/json;base64,eyJ1c2VyX2lkIjoi...]]>
+         </StaticResource>
+       </Companion>
+     </CompanionAds>
+   </Creative>
+   ```
+
+2. **Generic tag**:
+   - TrueX: `/:placement_hash/vast/generic?<params>`
+   - IDVx: `/:placement_hash/vast/idvx/generic?<params>`
+   - `adParameters` is delivered directly in `<Linear><AdParameters>`, which Google IMA exposes through
+     `ad.traffickingParameters`:
+
+   ```xml
+   <Creative id="placeholder_video">
+     <Linear>
+       <Duration>00:00:30</Duration>
+       <AdParameters><![CDATA[{"user_id":"...","vast_config_url":"..."}]]></AdParameters>
+       <MediaFiles>
+         <MediaFile delivery="progressive" type="video/mp4" width="1280" height="720">
+           <![CDATA[https://media.truex.com/m/video/truexloadingplaceholder-30s.mp4]]>
+         </MediaFile>
+       </MediaFiles>
+     </Linear>
+   </Creative>
+   ```
+
+The activity first checks `ad.companionAds` for a `truex` companion data URL, then falls back to
+`ad.traffickingParameters`. If neither yields valid JSON, it continues the linear fallback ad pod.
 
 ## Replace in production
 
@@ -36,3 +104,11 @@ Malformed interactive payloads are visible errors. The example resumes IMA's fal
 - Decide how playback state survives process death and device interruptions.
 - Replace reference status text with publisher UI or telemetry.
 - Test the publisher's real VMAP/VAST redirects, pod order, and fallback media.
+
+## Sample tag configuration
+
+The reference Google IMA CSAI example requests its sample ad break from
+[`vast-preroll.xml`][csai_vast_preroll_link], which defines a client-side pod with TrueX, IDVx, and linear
+fallback ads.
+
+[csai_vast_preroll_link]: https://s3.us-east-1.amazonaws.com/stash.truex.com/sample-tags/ima-csai/fire-tv/vast-preroll.xml

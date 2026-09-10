@@ -40,12 +40,17 @@ internal class ImaSsaiVideoStreamPlayer(
                         streamLoadedSent = true
                         listener.onStreamLoaded()
                     }
-                    if (playbackState == Player.STATE_ENDED) callbacks.forEach { it.onContentComplete() }
+                    if (playbackState == Player.STATE_ENDED) {
+                        callbacks.forEach { it.onContentComplete() }
+                    }
                 }
 
                 override fun onIsPlayingChanged(isPlaying: Boolean) {
-                    if (isPlaying) callbacks.forEach { it.onResume() }
-                    else if (player.playbackState == Player.STATE_READY) callbacks.forEach { it.onPause() }
+                    if (isPlaying) {
+                        callbacks.forEach { it.onResume() }
+                    } else if (player.playbackState == Player.STATE_READY) {
+                        callbacks.forEach { it.onPause() }
+                    }
                 }
 
                 override fun onPositionDiscontinuity(
@@ -97,7 +102,11 @@ internal class ImaSsaiVideoStreamPlayer(
     fun setControlsEnabled(enabled: Boolean) {
         playerView.useController = enabled
         playerView.controllerAutoShow = enabled
-        if (enabled) playerView.showController() else playerView.hideController()
+        if (enabled) {
+            playerView.showController()
+        } else {
+            playerView.hideController()
+        }
     }
 
     fun setAdMarkers(cuePoints: List<CuePoint>) {
