@@ -39,15 +39,20 @@ internal class ImaCsaiVideoPlayer(
                         callbacks.forEach { it.onLoaded(ad) }
                     }
                     if (playbackState == Player.STATE_ENDED) {
-                        if (ad != null) callbacks.forEach { it.onEnded(ad) } else onContentEnded()
+                        if (ad != null) {
+                            callbacks.forEach { it.onEnded(ad) }
+                        } else {
+                            onContentEnded()
+                        }
                     }
                 }
 
                 override fun onIsPlayingChanged(isPlaying: Boolean) {
                     val ad = currentAd ?: return
                     if (isPlaying) {
-                        if (adHasPlayed) callbacks.forEach { it.onResume(ad) }
-                        else {
+                        if (adHasPlayed) {
+                            callbacks.forEach { it.onResume(ad) }
+                        } else {
                             adHasPlayed = true
                             callbacks.forEach { it.onPlay(ad) }
                         }
@@ -98,15 +103,11 @@ internal class ImaCsaiVideoPlayer(
         playContent(url, resumePositionMs)
     }
 
-    fun pauseCurrentAdNearEnd() {
-        val duration = player.duration
-        if (duration > 200L && duration != C.TIME_UNSET) player.seekTo(duration - 100L)
-        player.pause()
-    }
-
     fun finishCurrentAd() {
         val duration = player.duration
-        if (duration > 200L && duration != C.TIME_UNSET) player.seekTo(duration - 100L)
+        if (duration > 200L && duration != C.TIME_UNSET) {
+            player.seekTo(duration - 100L)
+        }
         player.play()
     }
 
@@ -161,6 +162,8 @@ internal class ImaCsaiVideoPlayer(
     private fun updateAdProgress() {
         val ad = currentAd ?: return
         callbacks.forEach { it.onAdProgress(ad, adProgress) }
-        if (player.isPlaying) playerView.postDelayed(::updateAdProgress, 500L)
+        if (player.isPlaying) {
+            playerView.postDelayed(::updateAdProgress, 500L)
+        }
     }
 }

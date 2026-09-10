@@ -15,4 +15,18 @@ class ImaSsaiAdPayloadTest {
         assertEquals(ImaSsaiAdType.IDVX, classifyImaSsaiAd("IDVx"))
         assertEquals(ImaSsaiAdType.LINEAR, classifyImaSsaiAd("Google"))
     }
+
+    @Test
+    fun truexEligibleOnlyFirstInPod() {
+        org.junit.Assert.assertTrue(canPlayTruex(1))
+        org.junit.Assert.assertFalse(canPlayTruex(2))
+        org.junit.Assert.assertFalse(canPlayTruex(0))
+    }
+
+    @Test
+    fun normalizesDescriptionWithoutScheme() {
+        val payload = extractImaSsaiPayload(null, "get.truex.com/example/config")
+        org.junit.Assert.assertTrue(payload is ImaSsaiAdPayload.Url)
+        assertEquals("https://get.truex.com/example/config", (payload as ImaSsaiAdPayload.Url).value)
+    }
 }

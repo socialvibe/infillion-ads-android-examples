@@ -19,20 +19,23 @@ internal fun classifyImaCsaiAd(adSystem: String?): ImaCsaiAdType = when {
     else -> ImaCsaiAdType.LINEAR
 }
 
+internal fun canPlayTruex(adPosition: Int): Boolean = adPosition == 1
+
 internal fun extractImaCsaiPayload(
     traffickingParameters: String?,
     description: String?,
 ): ImaCsaiAdPayload? {
     val vastConfigUrl = traffickingParameters
         ?.let(::extractVastConfigUrl)
-        ?.takeIf(::isHttpUrl)
+        ?.let(::normalizeUrl)
     val parameters = traffickingParameters
         ?.takeIf(String::isNotBlank)
         ?.let { runCatching(::JSONObject).getOrNull() }
+    val descriptionUrl = normalizeUrl(description)
     return when {
         vastConfigUrl != null -> ImaCsaiAdPayload.Url(vastConfigUrl)
         parameters != null -> ImaCsaiAdPayload.Parameters(parameters)
-        isHttpUrl(description) -> ImaCsaiAdPayload.Url(requireNotNull(description))
+        descriptionUrl != null -> ImaCsaiAdPayload.Url(descriptionUrl)
         else -> null
     }
 }
@@ -40,8 +43,15 @@ internal fun extractImaCsaiPayload(
 private fun extractVastConfigUrl(parameters: String): String? =
     VAST_CONFIG_URL.find(parameters)?.groupValues?.get(1)
 
-private fun isHttpUrl(value: String?): Boolean =
-    value?.startsWith("https://", ignoreCase = true) == true ||
-        value?.startsWith("http://", ignoreCase = true) == true
+internal fun normalizeUrl(value: String?): String? {
+    val trimmed = value?.trim() ?: return null
+    return when {
+        trimmed.startsWith("https://", ignoreCase = true) ||
+            trimmed.startsWith("http://", ignoreCase = true) -> trimmed
+        trimmed.startsWith("get.truex.com", ignoreCase = true) ||
+            trimmed.startsWith("qa-get.truex.com", ignoreCase = true) -> "https://$trimmed"
+        else -> null
+    }
+}
 
 private val VAST_CONFIG_URL = Regex(""""vast_config_url"\s*:\s*"([^"]+)"""")
