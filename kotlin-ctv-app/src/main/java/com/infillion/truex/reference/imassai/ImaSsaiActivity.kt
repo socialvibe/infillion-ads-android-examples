@@ -148,11 +148,15 @@ class ImaSsaiActivity : AppCompatActivity(), ImaSsaiVideoStreamPlayer.Listener {
 
     // [2] Stitched ad timing is tracked in stream time before TAR takes the screen.
     private fun onAdStarted(ad: Ad?) {
-        Log.i(TAG, "onAdStarted: adSystem=${ad?.adSystem}, position=${ad?.adPodInfo?.adPosition}, trafficking=${ad?.traffickingParameters}, desc=${ad?.description}")
         if (ad == null) {
+            Log.w(TAG, "onAdStarted: ad is null")
             return
         }
         val pod = ad.adPodInfo
+        Log.i(
+            TAG,
+            "onAdStarted: adSystem=${ad.adSystem}, position=${pod?.adPosition}, trafficking=${ad.traffickingParameters}",
+        )
         if (currentAdEndMs == 0L) {
             currentAdEndMs = (pod.timeOffset * 1_000.0).toLong()
         }
@@ -167,13 +171,13 @@ class ImaSsaiActivity : AppCompatActivity(), ImaSsaiVideoStreamPlayer.Listener {
 
         // TrueX interactive engagement must run as the first ad in the pod.
         // If received at a later position, it continues as normal stitched linear playback.
-        if (type == ImaSsaiAdType.TRUEX && !canPlayTruex(pod.adPosition)) {
-            Log.w(TAG, "onAdStarted: TrueX ad at position ${pod.adPosition} != 1; playing as stitched linear")
-            showStatus("TrueX ad must be first in pod (position: ${pod.adPosition}) • playing as linear")
+        if (type == ImaSsaiAdType.TRUEX && !canPlayTruex(pod?.adPosition ?: 1)) {
+            Log.w(TAG, "onAdStarted: TrueX ad at position ${pod?.adPosition} != 1; playing as stitched linear")
+            showStatus("TrueX ad must be first in pod (position: ${pod?.adPosition}) • playing as linear")
             return
         }
 
-        val payload = extractImaSsaiPayload(ad.traffickingParameters)
+        val payload = extractImaSsaiPayload(ad.companionAds, ad.traffickingParameters)
         if (payload == null) {
             Log.e(TAG, "onAdStarted: interactive payload is invalid for $type ad; continuing stream")
             showStatus("Interactive payload is invalid • continuing stitched stream")

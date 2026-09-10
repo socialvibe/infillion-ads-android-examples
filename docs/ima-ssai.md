@@ -18,7 +18,8 @@ Media3 wrapper, DAI request, seeking, and renderer lifecycle.
 5. On ad `STARTED`, the example tracks the stitched placeholder end and identifies TrueX or IDVx through
    `AdSystem`. TrueX ads must be the first ad in the pod (`adPosition == 1`); later TrueX ads continue as
    stitched linear ads.
-6. The stitched stream pauses and hides while `TruexAdRenderer` owns the overlay.
+6. The stitched stream pauses and hides while `TruexAdRenderer` owns the overlay, initialized with the JSON
+   payload extracted from the TrueX companion ad or trafficking parameters.
 7. `AD_FREE_POD` records TrueX credit. On `AD_COMPLETED`, earned credit seeks to the ad-break offset plus its
    duration and a small safety margin (Google DAI `StreamManager` does not provide an ad break discard
    method). Without successful completion (opt-out, cancel, error, or IDVx), playback seeks just before the

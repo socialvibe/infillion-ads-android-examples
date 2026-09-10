@@ -17,8 +17,8 @@ integration are intentionally local to the package.
    position.
 5. On `STARTED`, the controller checks `AdSystem`. Normal linear ads remain under IMA control. TrueX ads must
    be the first ad in the pod (`adPosition == 1`); later TrueX ads continue as linear playback.
-6. An eligible TrueX or IDVx placeholder pauses IMA. The app parses the JSON payload from trafficking
-   parameters, hides the player, and starts `TruexAdRenderer`.
+6. An eligible TrueX or IDVx placeholder pauses IMA. The app parses the JSON payload from companion ads or
+   trafficking parameters, hides the player, and starts `TruexAdRenderer`.
 7. `AD_FREE_POD` records TrueX credit. On `AD_COMPLETED`, earned credit discards the active IMA break
    (`discardAdBreak()`). Without successful completion (opt-out, cancel, or error), the player seeks near the
    end of the placeholder so IMA finishes it and continues the remaining fallback ads. IDVx always continues.

@@ -229,7 +229,7 @@ class ImaCsaiActivity : AppCompatActivity() {
             return
         }
 
-        val payload = extractImaCsaiPayload(ad?.traffickingParameters)
+        val payload = extractImaCsaiPayload(ad?.companionAds, ad?.traffickingParameters)
         if (payload == null) {
             Log.e(TAG, "onAdStarted: interactive payload is invalid for $type ad; continuing fallback pod")
             showStatus("Interactive payload is invalid • continuing IMA fallback")
