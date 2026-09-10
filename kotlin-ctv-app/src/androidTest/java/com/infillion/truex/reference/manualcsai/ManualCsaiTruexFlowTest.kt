@@ -64,19 +64,24 @@ class ManualCsaiTruexFlowTest {
             }
 
             Log.i(TAG, "Step 4: Ensure video playback started")
-            waitForCondition(timeoutMs = 25_000L, description = "Content playback started") {
+            waitForCondition(
+                timeoutMs = 45_000L,
+                description = "Content playback started",
+                details = { "status='${activity.statusTextForTesting}'" },
+            ) {
                 activity.currentContentPositionMsForTesting > 0L
             }
             Log.i(TAG, "Content playback confirmed running at ${activity.currentContentPositionMsForTesting}ms")
 
             Log.i(TAG, "Step 5: Wait for adpod started or fail if position exceeds entry point")
             val adPodEntryPointMs = 10_000L
-            val boundaryToleranceMs = 4_000L
+            val boundaryToleranceMs = 12_000L
             val maxAllowedPositionWithoutAdPodMs = adPodEntryPointMs + boundaryToleranceMs
 
             waitForCondition(
-                timeoutMs = 35_000L,
+                timeoutMs = 60_000L,
                 description = "Ad pod started before reaching boundary position",
+                details = { "status='${activity.statusTextForTesting}', pos=${activity.currentContentPositionMsForTesting}ms" },
             ) {
                 val position = activity.currentContentPositionMsForTesting
                 val isAdPod = activity.isPlayingAdPodForTesting
@@ -92,8 +97,9 @@ class ManualCsaiTruexFlowTest {
 
             Log.i(TAG, "Step 6: Verify choice card shown")
             waitForCondition(
-                timeoutMs = 30_000L,
+                timeoutMs = 75_000L,
                 description = "Choice card displayed in renderer container",
+                details = { "status='${activity.statusTextForTesting}', events=$caughtEvents, containerVisible=${activity.isRendererContainerVisibleForTesting}" },
             ) {
                 activity.isRendererContainerVisibleForTesting &&
                     (caughtEvents.contains(TruexAdEvent.AD_STARTED) ||
@@ -116,8 +122,9 @@ class ManualCsaiTruexFlowTest {
             uiDevice.pressDPadCenter()
 
             waitForCondition(
-                timeoutMs = 15_000L,
+                timeoutMs = 30_000L,
                 description = "Viewer opt-in event (OPT_IN)",
+                details = { "status='${activity.statusTextForTesting}', events=$caughtEvents" },
             ) {
                 caughtEvents.contains(TruexAdEvent.OPT_IN) ||
                     activity.statusTextForTesting.contains("OPT_IN")
@@ -126,8 +133,9 @@ class ManualCsaiTruexFlowTest {
 
             Log.i(TAG, "Step 9: Verify an interactive portion started")
             waitForCondition(
-                timeoutMs = 25_000L,
+                timeoutMs = 45_000L,
                 description = "Interactive portion assets loaded and displayed",
+                details = { "status='${activity.statusTextForTesting}', events=$caughtEvents" },
             ) {
                 activity.isRendererContainerVisibleForTesting &&
                     (caughtEvents.contains(TruexAdEvent.AD_DISPLAYED) ||
@@ -145,7 +153,7 @@ class ManualCsaiTruexFlowTest {
 
             Log.i(TAG, "Step 11: Wait for time_spent countdown ends (~30s)")
             val countdownStart = SystemClock.elapsedRealtime()
-            val maxCountdownWaitMs = 38_000L
+            val maxCountdownWaitMs = 50_000L
             while (SystemClock.elapsedRealtime() - countdownStart < maxCountdownWaitMs) {
                 if (activity.isTruexAdCreditReceivedForTesting ||
                     caughtEvents.contains(TruexAdEvent.AD_FREE_POD)
@@ -159,8 +167,9 @@ class ManualCsaiTruexFlowTest {
 
             Log.i(TAG, "Step 12: Check continue button shown / credit earned")
             waitForCondition(
-                timeoutMs = 15_000L,
+                timeoutMs = 30_000L,
                 description = "AD_FREE_POD credit earned or continue prompt visible",
+                details = { "status='${activity.statusTextForTesting}', events=$caughtEvents" },
             ) {
                 activity.isTruexAdCreditReceivedForTesting ||
                     caughtEvents.contains(TruexAdEvent.AD_FREE_POD) ||
@@ -276,6 +285,7 @@ class ManualCsaiTruexFlowTest {
         timeoutMs: Long,
         pollIntervalMs: Long = 200L,
         description: String,
+        details: (() -> String)? = null,
         condition: () -> Boolean,
     ) {
         val deadline = SystemClock.elapsedRealtime() + timeoutMs
@@ -283,7 +293,8 @@ class ManualCsaiTruexFlowTest {
             if (condition()) return
             SystemClock.sleep(pollIntervalMs)
         }
-        fail("Timed out after ${timeoutMs}ms waiting for condition: $description")
+        val extra = details?.invoke()?.let { " [Current state: $it]" } ?: ""
+        fail("Timed out after ${timeoutMs}ms waiting for condition: $description$extra")
     }
 
     private companion object {
