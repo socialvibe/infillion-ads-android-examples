@@ -52,6 +52,53 @@ them distinct:
 The skip-target calculation is a pure helper with a unit test so the most consequential seek rule is easy to
 inspect.
 
+## VAST tag formats and ad parameters
+
+Depending on publisher ad serving setup, Infillion tags deliver ad parameters in one of two ways:
+
+1. **Companion tag**:
+   - TrueX: `/:placement_hash/vast/companion?<params>`
+   - IDVx: `/:placement_hash/vast/idvx/companion?<params>`
+   - `adParameters` is encoded as a base64 JSON `data:` URL inside
+     `<Companion apiFramework="truex"><StaticResource creativeType="application/json">`, which Google DAI
+     exposes through `ad.companionAds`:
+
+   ```xml
+   <Creative id="super_tag">
+     <CompanionAds required="all">
+       <Companion id="super_tag" width="960" height="540" apiFramework="truex">
+         <StaticResource creativeType="application/json">
+           <![CDATA[data:application/json;base64,eyJ1c2VyX2lkIjoi...]]>
+         </StaticResource>
+       </Companion>
+     </CompanionAds>
+   </Creative>
+   ```
+
+2. **Generic tag**:
+   - TrueX: `/:placement_hash/vast/generic?<params>`
+   - IDVx: `/:placement_hash/vast/idvx/generic?<params>`
+   - `adParameters` is delivered directly in `<Linear><AdParameters>`, which Google DAI exposes through
+     `ad.traffickingParameters`:
+
+   ```xml
+   <Creative id="placeholder_video">
+     <Linear>
+       <Duration>00:00:30</Duration>
+       <AdParameters><![CDATA[{"user_id":"...","vast_config_url":"..."}]]></AdParameters>
+       <MediaFiles>
+         <MediaFile delivery="progressive" type="video/mp4" width="1280" height="720">
+           <![CDATA[https://media.truex.com/m/video/truexloadingplaceholder-30s.mp4]]>
+         </MediaFile>
+       </MediaFiles>
+     </Linear>
+   </Creative>
+   ```
+
+In the sample stream (`vast-preroll.xml` / `vast-midroll.xml`), TrueX uses a companion tag while IDVx uses a
+generic tag. The activity resolves `ad.companionAds` first, then falls back to `ad.traffickingParameters`,
+supporting both tag styles seamlessly.
+
 ## Sample stream configuration
 
 The reference Google DAI stream uses content source ID `2496857` and video ID `truex-content22-4k`. Google Ad

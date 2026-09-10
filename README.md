@@ -58,6 +58,53 @@ For platform guidance beyond these runnable examples, see the
 [official Android integration documentation](https://socialvibe.github.io/infillion-ads-integration-docs/platforms/android/).
 It is still being completed.
 
+## VAST tag formats and ad parameters
+
+Depending on publisher ad serving setup and ad server capabilities, Infillion tags deliver `adParameters`
+in one of two formats:
+
+1. **Companion tag**:
+   - TrueX: `/:placement_hash/vast/companion?<params>`
+   - IDVx: `/:placement_hash/vast/idvx/companion?<params>`
+   - `adParameters` is encoded as a base64 JSON `data:` URL inside
+     `<Companion apiFramework="truex"><StaticResource creativeType="application/json">`:
+
+   ```xml
+   <Creative id="super_tag">
+     <CompanionAds required="all">
+       <Companion id="super_tag" width="960" height="540" apiFramework="truex">
+         <StaticResource creativeType="application/json">
+           <![CDATA[data:application/json;base64,eyJ1c2VyX2lkIjoi...]]>
+         </StaticResource>
+       </Companion>
+     </CompanionAds>
+   </Creative>
+   ```
+
+2. **Generic tag**:
+   - TrueX: `/:placement_hash/vast/generic?<params>`
+   - IDVx: `/:placement_hash/vast/idvx/generic?<params>`
+   - `adParameters` is delivered directly in the `<Linear><AdParameters>` node:
+
+   ```xml
+   <Creative id="placeholder_video">
+     <Linear>
+       <Duration>00:00:30</Duration>
+       <AdParameters><![CDATA[{"user_id":"...","vast_config_url":"..."}]]></AdParameters>
+       <MediaFiles>
+         <MediaFile delivery="progressive" type="video/mp4" width="1280" height="720">
+           <![CDATA[https://media.truex.com/m/video/truexloadingplaceholder-30s.mp4]]>
+         </MediaFile>
+       </MediaFiles>
+     </Linear>
+   </Creative>
+   ```
+
+Across all three integration examples, the app implements a consistent fallback resolution:
+- Check for companion ads with `apiFramework="truex"` and decode the base64 JSON data URL first.
+- If absent, check the `<AdParameters>` node (or `traffickingParameters` in Google IMA).
+- Fail safely and continue linear fallback playback if neither delivers valid JSON.
+
 ## Run the examples
 
 ### Requirements

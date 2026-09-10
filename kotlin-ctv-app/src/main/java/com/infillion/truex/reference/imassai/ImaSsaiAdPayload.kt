@@ -18,6 +18,26 @@ internal fun classifyImaSsaiAd(adSystem: String?): ImaSsaiAdType = when {
 
 internal fun canPlayTruex(adPosition: Int): Boolean = adPosition == 1
 
+/**
+ * Extracts the interactive ad JSON payload from either a TrueX companion ad or trafficking parameters.
+ *
+ * Infillion VAST tags deliver adParameters via one of two formats depending on publisher ad serving setup:
+ * 1. Companion tag:
+ *    - TrueX: /:placement_hash/vast/companion?<params>
+ *    - IDVx:  /:placement_hash/vast/idvx/companion?<params>
+ *    Ad parameters are encoded as a base64 JSON data URL in <StaticResource creativeType="application/json">
+ *    inside a <Companion apiFramework="truex"> node.
+ * 2. Generic tag:
+ *    - TrueX: /:placement_hash/vast/generic?<params>
+ *    - IDVx:  /:placement_hash/vast/idvx/generic?<params>
+ *    Ad parameters are delivered directly in the <Linear><AdParameters> node, which Google IMA exposes
+ *    as traffickingParameters.
+ *
+ * Fallback resolution order:
+ * - Check companionAds first for an apiFramework="truex" companion and parse its data URL JSON.
+ * - If absent, check traffickingParameters (<AdParameters>) and parse its JSON.
+ * - Fail (return null) if neither source provides valid JSON.
+ */
 internal fun extractImaSsaiPayload(
     companionAds: List<CompanionAd>?,
     traffickingParameters: String?,

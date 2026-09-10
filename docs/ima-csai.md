@@ -51,6 +51,52 @@ The activity creates `TruexAdRenderer` and `TruexAdOptions` itself:
 Malformed interactive payloads are visible errors. The example resumes IMA's fallback path rather than
 pretending the interactive ad succeeded.
 
+## VAST tag formats and ad parameters
+
+Depending on publisher ad serving setup, Infillion tags deliver ad parameters in one of two ways:
+
+1. **Companion tag**:
+   - TrueX: `/:placement_hash/vast/companion?<params>`
+   - IDVx: `/:placement_hash/vast/idvx/companion?<params>`
+   - `adParameters` is encoded as a base64 JSON `data:` URL inside
+     `<Companion apiFramework="truex"><StaticResource creativeType="application/json">`, which Google IMA
+     exposes through `ad.companionAds`:
+
+   ```xml
+   <Creative id="super_tag">
+     <CompanionAds required="all">
+       <Companion id="super_tag" width="960" height="540" apiFramework="truex">
+         <StaticResource creativeType="application/json">
+           <![CDATA[data:application/json;base64,eyJ1c2VyX2lkIjoi...]]>
+         </StaticResource>
+       </Companion>
+     </CompanionAds>
+   </Creative>
+   ```
+
+2. **Generic tag**:
+   - TrueX: `/:placement_hash/vast/generic?<params>`
+   - IDVx: `/:placement_hash/vast/idvx/generic?<params>`
+   - `adParameters` is delivered directly in `<Linear><AdParameters>`, which Google IMA exposes through
+     `ad.traffickingParameters`:
+
+   ```xml
+   <Creative id="placeholder_video">
+     <Linear>
+       <Duration>00:00:30</Duration>
+       <AdParameters><![CDATA[{"user_id":"...","vast_config_url":"..."}]]></AdParameters>
+       <MediaFiles>
+         <MediaFile delivery="progressive" type="video/mp4" width="1280" height="720">
+           <![CDATA[https://media.truex.com/m/video/truexloadingplaceholder-30s.mp4]]>
+         </MediaFile>
+       </MediaFiles>
+     </Linear>
+   </Creative>
+   ```
+
+The activity first checks `ad.companionAds` for a `truex` companion data URL, then falls back to
+`ad.traffickingParameters`. If neither yields valid JSON, it continues the linear fallback ad pod.
+
 ## Replace in production
 
 - Build the ad-tag URL from publisher inventory and targeting.
