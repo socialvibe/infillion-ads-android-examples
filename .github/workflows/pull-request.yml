@@ -109,9 +109,9 @@ jobs:
       - name: Run Functional UI Tests on Android TV Emulator
         uses: reactivecircus/android-emulator-runner@v2
         with:
-          api-level: 34
+          api-level: 31
           target: android-tv
-          arch: x86_64
+          arch: x86
           profile: tv_1080p
           disable-animations: true
           script: ./gradlew runFunctionalUiTest
