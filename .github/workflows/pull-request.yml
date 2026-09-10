@@ -109,7 +109,7 @@ jobs:
       - name: Run Functional UI Tests on Android TV Emulator
         uses: reactivecircus/android-emulator-runner@v2
         with:
-          api-level: 30
+          api-level: 34
           target: android-tv
           arch: x86_64
           profile: tv_1080p
