@@ -18,18 +18,31 @@ internal object ManualVastPayloadParser {
         return parse(xml)
     }
 
+    /**
+     * Parses the interactive ad JSON payload from either a TrueX companion ad or <AdParameters>.
+     *
+     * Infillion VAST tags deliver adParameters via one of two formats depending on publisher ad serving setup:
+     * 1. Companion tag:
+     *    - TrueX: /:placement_hash/vast/companion?<params>
+     *    - IDVx:  /:placement_hash/vast/idvx/companion?<params>
+     *    Ad parameters are encoded as a base64 JSON data URL in <StaticResource creativeType="application/json">
+     *    inside a <Companion apiFramework="truex"> node.
+     * 2. Generic tag:
+     *    - TrueX: /:placement_hash/vast/generic?<params>
+     *    - IDVx:  /:placement_hash/vast/idvx/generic?<params>
+     *    Ad parameters are delivered directly in the <Linear><AdParameters> node.
+     *
+     * Fallback resolution order:
+     * - Check for an apiFramework="truex" companion first and parse its data URL JSON.
+     * - If absent, check <AdParameters> and parse its JSON.
+     * - Fail (throw error) if neither source provides valid JSON.
+     */
     fun parse(xml: String): JSONObject {
         val document = DocumentBuilderFactory.newInstance()
             .newDocumentBuilder()
             .parse(InputSource(StringReader(xml.trim())))
         val root = document.documentElement
 
-        // Infillion VAST tags deliver ad parameters via one of two formats depending on publisher ad serving:
-        // 1. Companion tag (.../vast/companion or .../vast/idvx/companion):
-        //    Ad parameters are encoded as a base64 JSON data URL in Companion/StaticResource.
-        // 2. Generic tag (.../vast/generic or .../vast/idvx/generic):
-        //    Ad parameters are delivered directly inside the <AdParameters> node.
-        // The parser checks companion first, then falls back to <AdParameters>.
         val companion = companionJson(root)
         if (companion != null) {
             return companion
