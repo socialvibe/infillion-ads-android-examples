@@ -229,7 +229,7 @@ class ImaCsaiActivity : AppCompatActivity() {
             return
         }
 
-        val payload = extractImaCsaiPayload(ad?.traffickingParameters, ad?.description)
+        val payload = extractImaCsaiPayload(ad?.traffickingParameters)
         if (payload == null) {
             Log.e(TAG, "onAdStarted: interactive payload is invalid for $type ad; continuing fallback pod")
             showStatus("Interactive payload is invalid • continuing IMA fallback")
@@ -259,16 +259,8 @@ class ImaCsaiActivity : AppCompatActivity() {
         }
         val newRenderer = TruexAdRenderer(this).also { tar ->
             tar.addEventListener(null, truexAdEventHandler)
-            when (payload) {
-                is ImaCsaiAdPayload.Url -> {
-                    Log.i(TAG, "Initializing TruexAdRenderer with URL: ${payload.value}")
-                    tar.init(payload.value, options)
-                }
-                is ImaCsaiAdPayload.Parameters -> {
-                    Log.i(TAG, "Initializing TruexAdRenderer with JSON parameters")
-                    tar.init(payload.value, options)
-                }
-            }
+            Log.i(TAG, "Initializing TruexAdRenderer with JSON parameters")
+            tar.init(payload, options)
         }
         truexAdRenderer = newRenderer
         Log.i(TAG, "Starting TruexAdRenderer inside adContainer")

@@ -173,7 +173,7 @@ class ImaSsaiActivity : AppCompatActivity(), ImaSsaiVideoStreamPlayer.Listener {
             return
         }
 
-        val payload = extractImaSsaiPayload(ad.traffickingParameters, ad.description)
+        val payload = extractImaSsaiPayload(ad.traffickingParameters)
         if (payload == null) {
             Log.e(TAG, "onAdStarted: interactive payload is invalid for $type ad; continuing stream")
             showStatus("Interactive payload is invalid • continuing stitched stream")
@@ -202,16 +202,8 @@ class ImaSsaiActivity : AppCompatActivity(), ImaSsaiVideoStreamPlayer.Listener {
         }
         val newRenderer = TruexAdRenderer(this).also { tar ->
             tar.addEventListener(null, truexAdEventHandler)
-            when (payload) {
-                is ImaSsaiAdPayload.Url -> {
-                    Log.i(TAG, "Initializing TruexAdRenderer with URL: ${payload.value}")
-                    tar.init(payload.value, options)
-                }
-                is ImaSsaiAdPayload.Parameters -> {
-                    Log.i(TAG, "Initializing TruexAdRenderer with JSON parameters")
-                    tar.init(payload.value, options)
-                }
-            }
+            Log.i(TAG, "Initializing TruexAdRenderer with JSON parameters")
+            tar.init(payload, options)
         }
         truexAdRenderer = newRenderer
         Log.i(TAG, "Starting TruexAdRenderer inside adContainer")

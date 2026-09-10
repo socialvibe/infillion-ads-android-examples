@@ -1,6 +1,10 @@
 package com.infillion.truex.reference.imassai
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class ImaSsaiAdPayloadTest {
@@ -18,15 +22,24 @@ class ImaSsaiAdPayloadTest {
 
     @Test
     fun truexEligibleOnlyFirstInPod() {
-        org.junit.Assert.assertTrue(canPlayTruex(1))
-        org.junit.Assert.assertFalse(canPlayTruex(2))
-        org.junit.Assert.assertFalse(canPlayTruex(0))
+        assertTrue(canPlayTruex(1))
+        assertFalse(canPlayTruex(2))
+        assertFalse(canPlayTruex(0))
     }
 
     @Test
-    fun normalizesDescriptionWithoutScheme() {
-        val payload = extractImaSsaiPayload(null, "get.truex.com/example/config")
-        org.junit.Assert.assertTrue(payload is ImaSsaiAdPayload.Url)
-        assertEquals("https://get.truex.com/example/config", (payload as ImaSsaiAdPayload.Url).value)
+    fun parsesValidTraffickingParametersJson() {
+        val payload = extractImaSsaiPayload("""{"channel":"ctv","ad_id":123}""")
+        assertNotNull(payload)
+        assertEquals("ctv", payload?.getString("channel"))
+        assertEquals(123, payload?.getInt("ad_id"))
+    }
+
+    @Test
+    fun rejectsInvalidOrBlankTraffickingParameters() {
+        assertNull(extractImaSsaiPayload(null))
+        assertNull(extractImaSsaiPayload(""))
+        assertNull(extractImaSsaiPayload("   "))
+        assertNull(extractImaSsaiPayload("not valid json"))
     }
 }
