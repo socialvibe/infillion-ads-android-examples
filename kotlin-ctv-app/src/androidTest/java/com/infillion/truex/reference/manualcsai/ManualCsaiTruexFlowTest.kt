@@ -101,6 +101,12 @@ class ManualCsaiTruexFlowTest {
                 description = "Choice card displayed in renderer container",
                 details = { "status='${activity.statusTextForTesting}', events=$caughtEvents, containerVisible=${activity.isRendererContainerVisibleForTesting}" },
             ) {
+                if (caughtEvents.contains(TruexAdEvent.NO_ADS_AVAILABLE)) {
+                    fail("TrueX renderer emitted NO_ADS_AVAILABLE: ad server has no fill for this request. Status: ${activity.statusTextForTesting}")
+                }
+                if (caughtEvents.contains(TruexAdEvent.AD_ERROR)) {
+                    fail("TrueX renderer emitted AD_ERROR. Status: ${activity.statusTextForTesting}")
+                }
                 activity.isRendererContainerVisibleForTesting &&
                     (caughtEvents.contains(TruexAdEvent.AD_STARTED) ||
                         caughtEvents.contains(TruexAdEvent.AD_DISPLAYED) ||

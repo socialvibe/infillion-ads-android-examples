@@ -96,8 +96,13 @@ tasks.register<Exec>("runFunctionalUiTest") {
         """
         adb install -r -t build/outputs/apk/debug/kotlin-ctv-app-debug.apk && \
         adb install -r -t build/outputs/apk/androidTest/debug/kotlin-ctv-app-debug-androidTest.apk && \
-        adb shell am instrument -w -r -e class com.infillion.truex.reference.manualcsai.ManualCsaiTruexFlowTest com.infillion.truex.reference.test/androidx.test.runner.AndroidJUnitRunner | tee /tmp/test_output.txt && \
-        grep -q "OK (1 test)" /tmp/test_output.txt
+        adb logcat -c && \
+        adb shell am instrument -w -r -e class com.infillion.truex.reference.manualcsai.ManualCsaiTruexFlowTest com.infillion.truex.reference.test/androidx.test.runner.AndroidJUnitRunner | tee /tmp/test_output.txt
+        if ! grep -q "OK (1 test)" /tmp/test_output.txt; then
+            echo "=== TEST FAILED: LOGCAT DUMP ==="
+            adb logcat -d -s ManualCsai ManualCsaiTruexFlowTest TruexAdRenderer TruexAdEvent Chromium WebView
+            exit 1
+        fi
         """.trimIndent(),
     )
 }
