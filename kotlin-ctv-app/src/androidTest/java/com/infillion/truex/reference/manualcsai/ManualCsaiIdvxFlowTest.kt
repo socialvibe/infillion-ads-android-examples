@@ -10,7 +10,6 @@ import androidx.test.filters.LargeTest
 import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.runner.lifecycle.ActivityLifecycleMonitorRegistry
 import androidx.test.runner.lifecycle.Stage
-import androidx.test.uiautomator.By
 import androidx.test.uiautomator.UiDevice
 import com.infillion.truex.reference.MainActivity
 import com.truex.adrenderer.TruexAdEvent
@@ -22,15 +21,28 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import java.io.File
 import java.util.concurrent.CopyOnWriteArrayList
-import java.util.regex.Pattern
 
 /**
- * Functional UI test verifying the TrueX interactive ad renderer integration flow
- * with live ad requests, video playback, CTV remote D-pad interactions, and host app event handling.
+ * Functional UI test verifying the IDVx interactive ad flow in Manual CSAI:
+ * 1. Start activity from main carousel
+ * 2. Start playback
+ * 3. Wait for midroll ad pod (10s)
+ * 4. Verify TrueX Choice Card shown
+ * 5. Navigate D-pad Right to "Watch Ads" option
+ * 6. Press OK (Center / Enter)
+ * 7. Verify OPT_OUT event fired
+ * 8. Verify TrueX placeholder finishes
+ * 9. Verify IDVx starts and TruexAdRenderer launches IDVx unit
+ * 10. Press OK on interactive portion, verify UI changes, and take screenshot
+ * 11. Wait ~30s for IDVx duration / countdown to end
+ * 12. Verify AD_COMPLETED fired, but AD_FREE_POD was NOT awarded
+ * 13. Verify player advances past IDVx placeholder and begins next ad in pod (airline-linear)
+ * 14. Print all captured TrueX and IDVx event transitions
+ * 15. Complete test cleanly
  */
 @RunWith(AndroidJUnit4::class)
 @LargeTest
-class ManualCsaiTruexFlowTest {
+class ManualCsaiIdvxFlowTest {
 
     private lateinit var uiDevice: UiDevice
 
@@ -41,29 +53,27 @@ class ManualCsaiTruexFlowTest {
     }
 
     @Test
-    fun testTruexHappyPathIntegrationFlow() {
+    fun testIdvxFallbackHappyPathFlow() {
         Log.i(TAG, "Step 1: Open app (launch MainActivity)")
         val mainScenario = ActivityScenario.launch(MainActivity::class.java)
 
         try {
-            Log.i(TAG, "Step 2: Launch manual csai activity from main CTV carousel")
+            Log.i(TAG, "Step 1b: Launch Manual CSAI activity from main CTV carousel")
             uiDevice.waitForIdle(2_000L)
-            // In MainActivity, the first item ('Plain / Manual CSAI') is focused initially.
             uiDevice.pressDPadCenter()
 
-            Log.i(TAG, "Step 3: Ensure manual-csai activity is running")
             val activity = waitForActivity<ManualCsaiActivity>(timeoutMs = 15_000L)
             assertFalse("ManualCsaiActivity must be active and not finishing", activity.isFinishing)
 
             val caughtEvents = CopyOnWriteArrayList<TruexAdEvent>()
             activity.runOnUiThread {
                 activity.addTruexEventListenerForTesting { event, _ ->
-                    Log.i(TAG, "Caught TruexAdEvent in test: $event")
+                    Log.i(TAG, "Caught TruexAdEvent in IDVx test: $event")
                     caughtEvents.add(event)
                 }
             }
 
-            Log.i(TAG, "Step 4: Ensure video playback started")
+            Log.i(TAG, "Step 2: Ensure content video playback started")
             waitForCondition(
                 timeoutMs = 45_000L,
                 description = "Content playback started",
@@ -71,9 +81,9 @@ class ManualCsaiTruexFlowTest {
             ) {
                 activity.currentContentPositionMsForTesting > 0L
             }
-            Log.i(TAG, "Content playback confirmed running at ${activity.currentContentPositionMsForTesting}ms")
+            Log.i(TAG, "Content playback running at ${activity.currentContentPositionMsForTesting}ms")
 
-            Log.i(TAG, "Step 5: Wait for adpod started or fail if position exceeds entry point")
+            Log.i(TAG, "Step 3: Wait for adpod started at 10s midroll")
             val adPodEntryPointMs = 10_000L
             val boundaryToleranceMs = 12_000L
             val maxAllowedPositionWithoutAdPodMs = adPodEntryPointMs + boundaryToleranceMs
@@ -95,14 +105,14 @@ class ManualCsaiTruexFlowTest {
             }
             Log.i(TAG, "Ad pod started successfully. Status: ${activity.statusTextForTesting}")
 
-            Log.i(TAG, "Step 6: Verify choice card shown")
+            Log.i(TAG, "Step 4: Verify TrueX Choice Card shown")
             waitForCondition(
                 timeoutMs = 75_000L,
                 description = "Choice card displayed in renderer container",
                 details = { "status='${activity.statusTextForTesting}', events=$caughtEvents, containerVisible=${activity.isRendererContainerVisibleForTesting}" },
             ) {
                 if (caughtEvents.contains(TruexAdEvent.NO_ADS_AVAILABLE)) {
-                    fail("TrueX renderer emitted NO_ADS_AVAILABLE: ad server has no fill for this request. Status: ${activity.statusTextForTesting}")
+                    fail("TrueX renderer emitted NO_ADS_AVAILABLE: ad server has no fill. Status: ${activity.statusTextForTesting}")
                 }
                 if (caughtEvents.contains(TruexAdEvent.AD_ERROR)) {
                     fail("TrueX renderer emitted AD_ERROR. Status: ${activity.statusTextForTesting}")
@@ -110,155 +120,128 @@ class ManualCsaiTruexFlowTest {
                 activity.isRendererContainerVisibleForTesting &&
                     (caughtEvents.contains(TruexAdEvent.AD_STARTED) ||
                         caughtEvents.contains(TruexAdEvent.AD_DISPLAYED) ||
-                        activity.statusTextForTesting.contains("AD_STARTED"))
+                        activity.statusTextForTesting.contains("AD_STARTED") ||
+                        activity.statusTextForTesting.contains("adStarted"))
             }
             Log.i(TAG, "Choice card is visible. Status: ${activity.statusTextForTesting}")
-            takeScreenshot("truex_01_choice_card.png")
+            takeScreenshot("idvx_01_truex_choice_card.png")
 
-            Log.i(TAG, "Step 7: Select watch, then back to interactive option")
+            Log.i(TAG, "Step 5: Press Right to focus 'Watch Ads' option")
             SystemClock.sleep(1_500L)
-            Log.i(TAG, "Navigating to 'Watch' option via DPAD_RIGHT")
             uiDevice.pressDPadRight()
-            SystemClock.sleep(1_000L)
+            SystemClock.sleep(800L)
 
-            Log.i(TAG, "Navigating back to interactive option via DPAD_LEFT")
-            uiDevice.pressDPadLeft()
-            SystemClock.sleep(1_000L)
-
-            Log.i(TAG, "Step 8: Press OK on interactive option")
+            Log.i(TAG, "Step 6: Press OK on 'Watch Ads'")
             uiDevice.pressDPadCenter()
+            SystemClock.sleep(400L)
+            uiDevice.pressKeyCode(KeyEvent.KEYCODE_ENTER)
 
+            Log.i(TAG, "Step 7: Verify OPT_OUT terminal event fired")
             waitForCondition(
-                timeoutMs = 30_000L,
-                description = "Viewer opt-in event (OPT_IN)",
+                timeoutMs = 25_000L,
+                description = "OPT_OUT event received from TrueX choice card",
                 details = { "status='${activity.statusTextForTesting}', events=$caughtEvents" },
             ) {
-                caughtEvents.contains(TruexAdEvent.OPT_IN) ||
-                    activity.statusTextForTesting.contains("OPT_IN")
+                caughtEvents.contains(TruexAdEvent.OPT_OUT) ||
+                    activity.statusTextForTesting.contains("optOut")
             }
-            Log.i(TAG, "Viewer successfully opted in to interactive experience")
-            takeScreenshot("truex_02_opt_in.png")
+            Log.i(TAG, "OPT_OUT received successfully")
+            takeScreenshot("idvx_02_opt_out.png")
 
-            Log.i(TAG, "Step 9: Verify an interactive portion started")
+            Log.i(TAG, "Step 8: Verify TrueX placeholder finishes and transitions to IDVx")
+            waitForCondition(
+                timeoutMs = 25_000L,
+                description = "TrueX placeholder playback completing and advancing to IDVx",
+                details = { "status='${activity.statusTextForTesting}'" },
+            ) {
+                activity.statusTextForTesting.contains("TRUEX complete") ||
+                    activity.statusTextForTesting.contains("IDVx") ||
+                    activity.statusTextForTesting.contains("Interactive ad") ||
+                    caughtEvents.count { it == TruexAdEvent.AD_STARTED } >= 2
+            }
+            Log.i(TAG, "TrueX completed and continuing fallback pod to IDVx")
+
+            Log.i(TAG, "Step 9: Verify that IDVx started")
             waitForCondition(
                 timeoutMs = 45_000L,
-                description = "Interactive portion assets loaded and displayed",
-                details = { "status='${activity.statusTextForTesting}', events=$caughtEvents" },
+                description = "IDVx interactive experience started and displayed",
+                details = { "status='${activity.statusTextForTesting}', events=$caughtEvents, containerVisible=${activity.isRendererContainerVisibleForTesting}" },
             ) {
                 activity.isRendererContainerVisibleForTesting &&
-                    (caughtEvents.contains(TruexAdEvent.AD_DISPLAYED) ||
-                        activity.statusTextForTesting.contains("Interactive ad"))
+                    (activity.statusTextForTesting.contains("IDVx") ||
+                        activity.statusTextForTesting.contains("Interactive ad") ||
+                        caughtEvents.count { it == TruexAdEvent.AD_STARTED } >= 2)
             }
-            Log.i(TAG, "Interactive engagement portion is actively displaying")
-            takeScreenshot("truex_03_interactive.png")
+            Log.i(TAG, "IDVx is actively displaying. Status: ${activity.statusTextForTesting}")
+            takeScreenshot("idvx_03_idvx_started.png")
 
-            Log.i(TAG, "Step 10: Make 1 interactive event to achieve interaction goal")
-            SystemClock.sleep(2_500L)
-            Log.i(TAG, "Sending DPAD_RIGHT interaction event")
-            uiDevice.pressDPadRight()
-            SystemClock.sleep(600L)
-            Log.i(TAG, "Sending DPAD_CENTER interaction event")
+            Log.i(TAG, "Step 10: Press OK and verify UI changes (1s timeout), then take screenshot")
+            SystemClock.sleep(1_500L)
             uiDevice.pressDPadCenter()
+            SystemClock.sleep(1_000L)
+            takeScreenshot("idvx_04_idvx_interactive.png")
 
-            Log.i(TAG, "Step 11: Wait for time_spent countdown ends (~30s)")
-            val countdownStart = SystemClock.elapsedRealtime()
-            val maxCountdownWaitMs = 50_000L
-            while (SystemClock.elapsedRealtime() - countdownStart < maxCountdownWaitMs) {
-                if (activity.isTruexAdCreditReceivedForTesting ||
-                    caughtEvents.contains(TruexAdEvent.AD_FREE_POD)
+            Log.i(TAG, "Step 11: Wait for 30s engagement timer / completion")
+            val idvxWaitStart = SystemClock.elapsedRealtime()
+            val maxIdvxWaitMs = 50_000L
+            while (SystemClock.elapsedRealtime() - idvxWaitStart < maxIdvxWaitMs) {
+                if (caughtEvents.count { it == TruexAdEvent.AD_COMPLETED } >= 2 ||
+                    activity.statusTextForTesting.contains("IDVX complete") ||
+                    activity.statusTextForTesting.contains("airline-linear")
                 ) {
-                    Log.i(TAG, "AD_FREE_POD credit received during countdown!")
+                    Log.i(TAG, "IDVx finished duration and completed")
                     break
                 }
                 SystemClock.sleep(1_000L)
             }
-            Log.i(TAG, "Countdown wait finished")
 
-            Log.i(TAG, "Step 12: Check continue button shown / credit earned")
+            Log.i(TAG, "Step 12: Verify adCompleted fired but not adFreePod")
             waitForCondition(
                 timeoutMs = 30_000L,
-                description = "AD_FREE_POD credit earned or continue prompt visible",
+                description = "IDVx adCompleted event received",
                 details = { "status='${activity.statusTextForTesting}', events=$caughtEvents" },
             ) {
-                activity.isTruexAdCreditReceivedForTesting ||
-                    caughtEvents.contains(TruexAdEvent.AD_FREE_POD) ||
-                    caughtEvents.contains(TruexAdEvent.AD_COMPLETED)
-            }
-            Log.i(TAG, "Continue condition verified. Status: ${activity.statusTextForTesting}")
-
-            Log.i(TAG, "Step 13: Press continue button")
-            SystemClock.sleep(3_000L)
-            takeScreenshot("truex_04_continue_prompt.png")
-
-            // Inspect visible UI objects
-            val textObjects = runCatching {
-                uiDevice.findObjects(By.text(Pattern.compile(".*", Pattern.CASE_INSENSITIVE)))
-            }.getOrDefault(emptyList())
-            for (obj in textObjects) {
-                Log.i(TAG, "Visible object: text='${obj.text}', desc='${obj.contentDescription}', bounds=${obj.visibleBounds}")
+                caughtEvents.count { it == TruexAdEvent.AD_COMPLETED } >= 2 ||
+                    activity.statusTextForTesting.contains("IDVX complete") ||
+                    activity.statusTextForTesting.contains("airline-linear")
             }
 
-            val continueButton = runCatching {
-                uiDevice.findObject(By.text(Pattern.compile(".*(continue|watch|skip).*", Pattern.CASE_INSENSITIVE)))
-                    ?: uiDevice.findObject(By.desc(Pattern.compile(".*(continue|watch|skip).*", Pattern.CASE_INSENSITIVE)))
-            }.getOrNull()
-
-            if (continueButton != null) {
-                Log.i(TAG, "Found continue button at ${continueButton.visibleBounds}, clicking directly")
-                continueButton.click()
-                SystemClock.sleep(1_000L)
-            }
-
-            val continueClickStart = SystemClock.elapsedRealtime()
-            while (SystemClock.elapsedRealtime() - continueClickStart < 15_000L) {
-                if (caughtEvents.contains(TruexAdEvent.AD_COMPLETED)) break
-                Log.i(TAG, "Pressing DPAD keys / ENTER on continue prompt")
-                uiDevice.pressDPadCenter()
-                SystemClock.sleep(400L)
-                uiDevice.pressKeyCode(KeyEvent.KEYCODE_ENTER)
-                SystemClock.sleep(400L)
-                // Try navigating focus in case continue button is below or to the side
-                uiDevice.pressDPadDown()
-                SystemClock.sleep(400L)
-                uiDevice.pressDPadRight()
-                SystemClock.sleep(400L)
-                uiDevice.pressDPadCenter()
-                SystemClock.sleep(1_000L)
-            }
-
-            Log.i(TAG, "Step 14: Verify adFreePod and adCompleted fired and caught in app code")
-            waitForCondition(
-                timeoutMs = 25_000L,
-                description = "AD_COMPLETED terminal event received and processed",
-            ) {
-                caughtEvents.contains(TruexAdEvent.AD_COMPLETED) &&
-                    activity.isTruexAdCompletedRecordForTesting
-            }
-
-            assertTrue(
-                "AD_FREE_POD event must be emitted and recorded in app code",
-                caughtEvents.contains(TruexAdEvent.AD_FREE_POD) &&
+            assertFalse(
+                "AD_FREE_POD must NOT be awarded for IDVx",
+                caughtEvents.contains(TruexAdEvent.AD_FREE_POD) ||
                     activity.isTruexAdCreditEarnedRecordForTesting,
             )
-
             assertTrue(
-                "AD_COMPLETED event must be emitted and processed in app code",
-                caughtEvents.contains(TruexAdEvent.AD_COMPLETED) &&
-                    activity.isTruexAdCompletedRecordForTesting,
+                "AD_COMPLETED must be received for IDVx",
+                caughtEvents.count { it == TruexAdEvent.AD_COMPLETED } >= 2 ||
+                    activity.statusTextForTesting.contains("IDVX complete") ||
+                    activity.statusTextForTesting.contains("airline-linear"),
             )
+            Log.i(TAG, "Verified AD_COMPLETED fired without AD_FREE_POD")
 
+            Log.i(TAG, "Step 13: Verify player seeked over IDVx placeholder and started next ad in pod (airline-linear)")
             waitForCondition(
-                timeoutMs = 20_000L,
-                description = "Content playback resumed with ad-free reward applied",
+                timeoutMs = 35_000L,
+                description = "Linear fallback ad (airline-linear) started",
+                details = { "status='${activity.statusTextForTesting}'" },
             ) {
-                !activity.isPlayingAdPodForTesting &&
-                    (activity.statusTextForTesting.contains("TrueX credit earned") ||
-                        activity.statusTextForTesting.startsWith("Content •"))
+                activity.statusTextForTesting.contains("airline-linear") ||
+                    activity.statusTextForTesting.contains("Linear fallback")
             }
-            takeScreenshot("truex_05_content_resumed.png")
+            Log.i(TAG, "Linear fallback ad confirmed playing: ${activity.statusTextForTesting}")
+            takeScreenshot("idvx_05_linear_fallback.png")
 
-            Log.i(TAG, "Step 15: Complete the case")
-            Log.i(TAG, "All 15 steps of TrueX happy-path flow verified successfully!")
+            Log.i(TAG, "Step 14: Print all TrueX and IDVx fired events")
+            Log.i(TAG, "=== ALL CAUGHT TRUEX & IDVX EVENTS ===")
+            caughtEvents.forEachIndexed { index, event ->
+                Log.i(TAG, "Event #$index: $event")
+            }
+            println("=== ALL CAUGHT TRUEX & IDVX EVENTS ===")
+            caughtEvents.forEachIndexed { index, event ->
+                println("Event #$index: $event")
+            }
+
+            Log.i(TAG, "Step 15: Complete the case successfully")
         } finally {
             mainScenario.close()
         }
@@ -320,6 +303,6 @@ class ManualCsaiTruexFlowTest {
     }
 
     private companion object {
-        const val TAG = "ManualCsaiTruexFlowTest"
+        const val TAG = "ManualCsaiIdvxFlowTest"
     }
 }

@@ -89,20 +89,32 @@ configurations.configureEach {
 
 tasks.register<Exec>("runFunctionalUiTest") {
     group = "verification"
-    description = "Installs APKs and runs ManualCsaiTruexFlowTest on a connected Android TV device or emulator via adb"
+    description = "Installs APKs, runs functional UI tests via adb, and pulls screenshots & logcat to build/reports/test-artifacts"
     dependsOn("assembleDebug", "assembleDebugAndroidTest")
     commandLine(
         "bash", "-c",
         """
+        mkdir -p build/reports/test-artifacts && \
+        adb shell "mkdir -p /data/local/tmp/test-artifacts && rm -f /data/local/tmp/test-artifacts/*" && \
         adb install -r -t build/outputs/apk/debug/kotlin-ctv-app-debug.apk && \
         adb install -r -t build/outputs/apk/androidTest/debug/kotlin-ctv-app-debug-androidTest.apk && \
-        adb logcat -c && \
-        adb shell am instrument -w -r -e class com.infillion.truex.reference.manualcsai.ManualCsaiTruexFlowTest com.infillion.truex.reference.test/androidx.test.runner.AndroidJUnitRunner | tee /tmp/test_output.txt
-        if ! grep -q "OK (1 test)" /tmp/test_output.txt; then
-            echo "=== TEST FAILED: LOGCAT DUMP ==="
-            adb logcat -d -s ManualCsai ManualCsaiTruexFlowTest TruexAdRenderer TruexAdEvent Chromium WebView
+        adb logcat -c
+        set +e
+        adb shell am instrument -w -r -e package com.infillion.truex.reference.manualcsai com.infillion.truex.reference.test/androidx.test.runner.AndroidJUnitRunner | tee build/reports/test-artifacts/instrumentation_output.txt
+        test_status=${'$'}?
+
+        echo "=== DUMPING LOGCAT TO ARTIFACTS ==="
+        adb logcat -d > build/reports/test-artifacts/logcat.txt
+        echo "=== PULLING SCREENSHOTS FROM DEVICE ==="
+        adb pull /data/local/tmp/test-artifacts/. build/reports/test-artifacts/ || true
+        adb pull /sdcard/Download/. build/reports/test-artifacts/ || true
+
+        if [ ${'$'}test_status -ne 0 ] || ! grep -E -q "OK \([0-9]+ tests?\)" build/reports/test-artifacts/instrumentation_output.txt; then
+            echo "=== FUNCTIONAL UI TESTS FAILED ==="
+            adb logcat -d -s ManualCsai ManualCsaiTruexFlowTest ManualCsaiIdvxFlowTest TruexAdRenderer TruexAdEvent
             exit 1
         fi
+        echo "=== ALL FUNCTIONAL UI TESTS PASSED ==="
         """.trimIndent(),
     )
 }

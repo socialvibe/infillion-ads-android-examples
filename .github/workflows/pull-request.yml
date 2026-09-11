@@ -15,18 +15,18 @@ jobs:
 
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
       - name: Set up Java
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: "17"
 
       - name: Set up Gradle
-        uses: gradle/actions/setup-gradle@v4
+        uses: gradle/actions/setup-gradle@v6
 
       - name: Validate version increment
         env:
@@ -89,16 +89,16 @@ jobs:
 
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Set up Java
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: "17"
 
       - name: Set up Gradle
-        uses: gradle/actions/setup-gradle@v4
+        uses: gradle/actions/setup-gradle@v6
 
       - name: Enable KVM
         run: |
@@ -115,3 +115,11 @@ jobs:
           profile: tv_1080p
           disable-animations: true
           script: ./gradlew runFunctionalUiTest
+
+      - name: Upload Test Artifacts (Screenshots and Logcat)
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: functional-ui-test-artifacts
+          path: kotlin-ctv-app/build/reports/test-artifacts/
+          if-no-files-found: warn
