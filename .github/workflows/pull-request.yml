@@ -123,20 +123,20 @@ jobs:
           arch: x86
           profile: tv_1080p
           disable-animations: true
-          script: ./gradlew runFunctionalUiTest
+          script: ./gradlew connectedDebugAndroidTest
 
       - name: Report Functional UI Tests
         uses: dorny/test-reporter@v3
         if: always()
         with:
           name: Functional UI Tests Report
-          path: 'kotlin-ctv-app/build/reports/test-artifacts/TEST-*.xml'
+          path: 'kotlin-ctv-app/build/outputs/androidTest-results/connected/**/*.xml'
           reporter: java-junit
 
-      - name: Upload Test Artifacts (Screenshots and Logcat)
+      - name: Upload Test Artifacts (Screenshots and Reports)
         if: always()
         uses: actions/upload-artifact@v7
         with:
           name: functional-ui-test-artifacts
-          path: kotlin-ctv-app/build/reports/test-artifacts/
+          path: kotlin-ctv-app/build/reports/
           if-no-files-found: warn

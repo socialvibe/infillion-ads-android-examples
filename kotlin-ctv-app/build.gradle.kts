@@ -83,42 +83,38 @@ dependencies {
     androidTestImplementation(libs.androidx.uiautomator)
 }
 
-configurations.configureEach {
-    exclude(group = "org.jetbrains.kotlin", module = "kotlin-stdlib-jdk8")
-}
-
-tasks.register<Exec>("runFunctionalUiTest") {
+val prepareDevice = tasks.register<Exec>("prepareDeviceForTests") {
     group = "verification"
-    description = "Installs APKs, runs functional UI tests via adb, and pulls screenshots & logcat to build/reports/test-artifacts"
-    dependsOn("assembleDebug", "assembleDebugAndroidTest")
+    description = "Prepares device storage and clears logcat before instrumented tests"
     commandLine(
         "bash", "-c",
         """
-        set -euo pipefail
-        mkdir -p build/reports/test-artifacts && \
-        adb shell "mkdir -p /sdcard/Download/test-artifacts && rm -f /sdcard/Download/test-artifacts/*" && \
-        adb install -r -t build/outputs/apk/debug/kotlin-ctv-app-debug.apk && \
-        adb install -r -t build/outputs/apk/androidTest/debug/kotlin-ctv-app-debug-androidTest.apk && \
-        adb logcat -c
-        set +e
-        set -o pipefail
-        adb shell am instrument -w -r -e package com.infillion.truex.reference.manualcsai com.infillion.truex.reference.test/androidx.test.runner.AndroidJUnitRunner | tee build/reports/test-artifacts/instrumentation_output.txt
-        test_status=${'$'}?
-
-        echo "=== DUMPING LOGCAT TO ARTIFACTS ==="
-        adb logcat -d > build/reports/test-artifacts/logcat.txt
-        echo "=== PULLING SCREENSHOTS FROM DEVICE ==="
-        adb pull /sdcard/Download/test-artifacts/. build/reports/test-artifacts/ || true
-
-        echo "=== CONVERTING INSTRUMENTATION TO JUNIT XML ==="
-        python3 ../scripts/parse_instrumentation_to_junit.py build/reports/test-artifacts/instrumentation_output.txt build/reports/test-artifacts/TEST-functional-ui.xml || true
-
-        if [ ${'$'}test_status -ne 0 ] || ! grep -E -q "OK \([1-9][0-9]* tests?\)" build/reports/test-artifacts/instrumentation_output.txt; then
-            echo "=== FUNCTIONAL UI TESTS FAILED ==="
-            adb logcat -d -s ManualCsai ManualCsaiTruexFlowTest ManualCsaiIdvxFlowTest TruexAdRenderer TruexAdEvent
-            exit 1
-        fi
-        echo "=== ALL FUNCTIONAL UI TESTS PASSED ==="
+        adb shell "mkdir -p /sdcard/Download/test-artifacts && rm -f /sdcard/Download/test-artifacts/*" || true
+        adb logcat -c || true
         """.trimIndent(),
     )
+}
+
+val pullTestArtifacts = tasks.register<Exec>("pullTestArtifacts") {
+    group = "verification"
+    description = "Pulls test screenshots and dumps logcat to build/reports/test-artifacts"
+    commandLine(
+        "bash", "-c",
+        """
+        mkdir -p build/reports/test-artifacts
+        adb logcat -d > build/reports/test-artifacts/logcat.txt || true
+        adb pull /sdcard/Download/test-artifacts/. build/reports/test-artifacts/ || true
+        """.trimIndent(),
+    )
+}
+
+tasks.matching { it.name == "connectedDebugAndroidTest" }.configureEach {
+    dependsOn(prepareDevice)
+    finalizedBy(pullTestArtifacts)
+}
+
+tasks.register("runFunctionalUiTest") {
+    group = "verification"
+    description = "Runs connectedDebugAndroidTest and collects test artifacts"
+    dependsOn(tasks.matching { it.name == "connectedDebugAndroidTest" })
 }

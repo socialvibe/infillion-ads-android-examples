@@ -25,10 +25,10 @@ Run all unit tests:
 Run functional UI tests on a connected Android TV device or emulator:
 
 ```shell
-./gradlew runFunctionalUiTest
+./gradlew connectedDebugAndroidTest
 ```
 
-Or via standard `adb`:
+Or run via standard `adb`:
 
 ```shell
 adb shell am instrument -w -r -e class com.infillion.truex.reference.manualcsai.ManualCsaiTruexFlowTest com.infillion.truex.reference.test/androidx.test.runner.AndroidJUnitRunner
