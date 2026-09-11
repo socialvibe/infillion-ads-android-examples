@@ -75,8 +75,34 @@ dependencies {
     debugImplementation(libs.androidx.compose.ui.tooling)
     testImplementation(libs.junit)
     testImplementation(libs.org.json)
+    androidTestImplementation(libs.junit)
+    androidTestImplementation(libs.androidx.test.core)
+    androidTestImplementation(libs.androidx.test.runner)
+    androidTestImplementation(libs.androidx.test.rules)
+    androidTestImplementation(libs.androidx.test.ext.junit)
+    androidTestImplementation(libs.androidx.uiautomator)
 }
 
 configurations.configureEach {
     exclude(group = "org.jetbrains.kotlin", module = "kotlin-stdlib-jdk8")
+}
+
+tasks.register<Exec>("runFunctionalUiTest") {
+    group = "verification"
+    description = "Installs APKs and runs ManualCsaiTruexFlowTest on a connected Android TV device or emulator via adb"
+    dependsOn("assembleDebug", "assembleDebugAndroidTest")
+    commandLine(
+        "bash", "-c",
+        """
+        adb install -r -t build/outputs/apk/debug/kotlin-ctv-app-debug.apk && \
+        adb install -r -t build/outputs/apk/androidTest/debug/kotlin-ctv-app-debug-androidTest.apk && \
+        adb logcat -c && \
+        adb shell am instrument -w -r -e class com.infillion.truex.reference.manualcsai.ManualCsaiTruexFlowTest com.infillion.truex.reference.test/androidx.test.runner.AndroidJUnitRunner | tee /tmp/test_output.txt
+        if ! grep -q "OK (1 test)" /tmp/test_output.txt; then
+            echo "=== TEST FAILED: LOGCAT DUMP ==="
+            adb logcat -d -s ManualCsai ManualCsaiTruexFlowTest TruexAdRenderer TruexAdEvent Chromium WebView
+            exit 1
+        fi
+        """.trimIndent(),
+    )
 }
