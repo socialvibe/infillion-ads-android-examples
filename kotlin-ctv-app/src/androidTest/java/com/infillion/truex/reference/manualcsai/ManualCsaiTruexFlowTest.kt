@@ -113,6 +113,7 @@ class ManualCsaiTruexFlowTest {
                         activity.statusTextForTesting.contains("AD_STARTED"))
             }
             Log.i(TAG, "Choice card is visible. Status: ${activity.statusTextForTesting}")
+            takeScreenshot("truex_01_choice_card.png")
 
             Log.i(TAG, "Step 7: Select watch, then back to interactive option")
             SystemClock.sleep(1_500L)
@@ -136,6 +137,7 @@ class ManualCsaiTruexFlowTest {
                     activity.statusTextForTesting.contains("OPT_IN")
             }
             Log.i(TAG, "Viewer successfully opted in to interactive experience")
+            takeScreenshot("truex_02_opt_in.png")
 
             Log.i(TAG, "Step 9: Verify an interactive portion started")
             waitForCondition(
@@ -148,6 +150,7 @@ class ManualCsaiTruexFlowTest {
                         activity.statusTextForTesting.contains("Interactive ad"))
             }
             Log.i(TAG, "Interactive engagement portion is actively displaying")
+            takeScreenshot("truex_03_interactive.png")
 
             Log.i(TAG, "Step 10: Make 1 interactive event to achieve interaction goal")
             SystemClock.sleep(2_500L)
@@ -185,13 +188,7 @@ class ManualCsaiTruexFlowTest {
 
             Log.i(TAG, "Step 13: Press continue button")
             SystemClock.sleep(3_000L)
-
-            // Save screenshot for diagnostics
-            runCatching {
-                val file = File("/sdcard/step13_continue.png")
-                uiDevice.takeScreenshot(file)
-                Log.i(TAG, "Saved screenshot to ${file.absolutePath}")
-            }
+            takeScreenshot("truex_04_continue_prompt.png")
 
             // Inspect visible UI objects
             val textObjects = runCatching {
@@ -258,11 +255,26 @@ class ManualCsaiTruexFlowTest {
                     (activity.statusTextForTesting.contains("TrueX credit earned") ||
                         activity.statusTextForTesting.startsWith("Content •"))
             }
+            takeScreenshot("truex_05_content_resumed.png")
 
             Log.i(TAG, "Step 15: Complete the case")
             Log.i(TAG, "All 15 steps of TrueX happy-path flow verified successfully!")
         } finally {
             mainScenario.close()
+        }
+    }
+
+    private fun takeScreenshot(name: String) {
+        val file = File("/sdcard/Download/test-artifacts", name)
+        runCatching {
+            file.parentFile?.mkdirs()
+            if (uiDevice.takeScreenshot(file)) {
+                Log.i(TAG, "Saved screenshot to ${file.absolutePath}")
+            } else {
+                Log.w(TAG, "Failed to capture screenshot to ${file.absolutePath}")
+            }
+        }.onFailure {
+            Log.w(TAG, "Exception capturing screenshot to ${file.absolutePath}: ${it.message}")
         }
     }
 
