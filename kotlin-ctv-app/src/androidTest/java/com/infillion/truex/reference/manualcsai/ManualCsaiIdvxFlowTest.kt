@@ -148,6 +148,13 @@ class ManualCsaiIdvxFlowTest {
             Log.i(TAG, "OPT_OUT received successfully")
             takeScreenshot("idvx_02_opt_out.png")
 
+            fun idvxEvents(): List<TruexAdEvent> {
+                val optOutIdx = caughtEvents.indexOf(TruexAdEvent.OPT_OUT)
+                return if (optOutIdx >= 0 && optOutIdx + 1 <= caughtEvents.size) {
+                    caughtEvents.subList(optOutIdx + 1, caughtEvents.size)
+                } else emptyList()
+            }
+
             Log.i(TAG, "Step 8: Verify TrueX placeholder finishes and transitions to IDVx")
             waitForCondition(
                 timeoutMs = 25_000L,
@@ -156,8 +163,7 @@ class ManualCsaiIdvxFlowTest {
             ) {
                 activity.statusTextForTesting.contains("TRUEX complete") ||
                     activity.statusTextForTesting.contains("IDVx") ||
-                    activity.statusTextForTesting.contains("Interactive ad") ||
-                    caughtEvents.count { it == TruexAdEvent.AD_STARTED } >= 2
+                    idvxEvents().isNotEmpty()
             }
             Log.i(TAG, "TrueX completed and continuing fallback pod to IDVx")
 
@@ -165,31 +171,34 @@ class ManualCsaiIdvxFlowTest {
             waitForCondition(
                 timeoutMs = 45_000L,
                 description = "IDVx interactive experience started and displayed",
-                details = { "status='${activity.statusTextForTesting}', events=$caughtEvents, containerVisible=${activity.isRendererContainerVisibleForTesting}" },
+                details = { "status='${activity.statusTextForTesting}', idvxEvents=${idvxEvents()}, containerVisible=${activity.isRendererContainerVisibleForTesting}" },
             ) {
                 activity.isRendererContainerVisibleForTesting &&
-                    (activity.statusTextForTesting.contains("IDVx") ||
-                        activity.statusTextForTesting.contains("Interactive ad") ||
-                        caughtEvents.count { it == TruexAdEvent.AD_STARTED } >= 2)
+                    idvxEvents().contains(TruexAdEvent.AD_STARTED)
             }
             Log.i(TAG, "IDVx is actively displaying. Status: ${activity.statusTextForTesting}")
             takeScreenshot("idvx_03_idvx_started.png")
 
-            Log.i(TAG, "Step 10: Press OK and verify UI changes (1s timeout), then take screenshot")
+            Log.i(TAG, "Step 10: Press OK and verify UI is responsive, then take screenshot")
             SystemClock.sleep(1_500L)
+            assertTrue(
+                "Renderer container must be visible when interacting with IDVx",
+                activity.isRendererContainerVisibleForTesting,
+            )
             uiDevice.pressDPadCenter()
             SystemClock.sleep(1_000L)
+            assertTrue(
+                "Activity and renderer container must remain active and visible after interaction",
+                !activity.isFinishing && activity.isRendererContainerVisibleForTesting,
+            )
             takeScreenshot("idvx_04_idvx_interactive.png")
 
             Log.i(TAG, "Step 11: Wait for 30s engagement timer / completion")
             val idvxWaitStart = SystemClock.elapsedRealtime()
             val maxIdvxWaitMs = 50_000L
             while (SystemClock.elapsedRealtime() - idvxWaitStart < maxIdvxWaitMs) {
-                if (caughtEvents.count { it == TruexAdEvent.AD_COMPLETED } >= 2 ||
-                    activity.statusTextForTesting.contains("IDVX complete") ||
-                    activity.statusTextForTesting.contains("airline-linear")
-                ) {
-                    Log.i(TAG, "IDVx finished duration and completed")
+                if (idvxEvents().contains(TruexAdEvent.AD_COMPLETED)) {
+                    Log.i(TAG, "IDVx finished duration and emitted AD_COMPLETED")
                     break
                 }
                 SystemClock.sleep(1_000L)
@@ -199,23 +208,19 @@ class ManualCsaiIdvxFlowTest {
             waitForCondition(
                 timeoutMs = 30_000L,
                 description = "IDVx adCompleted event received",
-                details = { "status='${activity.statusTextForTesting}', events=$caughtEvents" },
+                details = { "status='${activity.statusTextForTesting}', idvxEvents=${idvxEvents()}" },
             ) {
-                caughtEvents.count { it == TruexAdEvent.AD_COMPLETED } >= 2 ||
-                    activity.statusTextForTesting.contains("IDVX complete") ||
-                    activity.statusTextForTesting.contains("airline-linear")
+                idvxEvents().contains(TruexAdEvent.AD_COMPLETED)
             }
 
             assertFalse(
                 "AD_FREE_POD must NOT be awarded for IDVx",
-                caughtEvents.contains(TruexAdEvent.AD_FREE_POD) ||
+                idvxEvents().contains(TruexAdEvent.AD_FREE_POD) ||
                     activity.isTruexAdCreditEarnedRecordForTesting,
             )
             assertTrue(
-                "AD_COMPLETED must be received for IDVx",
-                caughtEvents.count { it == TruexAdEvent.AD_COMPLETED } >= 2 ||
-                    activity.statusTextForTesting.contains("IDVX complete") ||
-                    activity.statusTextForTesting.contains("airline-linear"),
+                "AD_COMPLETED must be received from IDVx renderer",
+                idvxEvents().contains(TruexAdEvent.AD_COMPLETED),
             )
             Log.i(TAG, "Verified AD_COMPLETED fired without AD_FREE_POD")
 
@@ -248,21 +253,17 @@ class ManualCsaiIdvxFlowTest {
     }
 
     private fun takeScreenshot(name: String) {
-        val targets = listOf(
-            File("/data/local/tmp/test-artifacts", name),
-            File("/sdcard/Download", name),
-            File(InstrumentationRegistry.getInstrumentation().targetContext.cacheDir, name),
-        )
-        for (file in targets) {
-            runCatching {
-                file.parentFile?.mkdirs()
-                if (uiDevice.takeScreenshot(file)) {
-                    Log.i(TAG, "Saved screenshot to ${file.absolutePath}")
-                    return
-                }
+        val file = File("/sdcard/Download/test-artifacts", name)
+        runCatching {
+            file.parentFile?.mkdirs()
+            if (uiDevice.takeScreenshot(file)) {
+                Log.i(TAG, "Saved screenshot to ${file.absolutePath}")
+            } else {
+                Log.w(TAG, "Failed to capture screenshot to ${file.absolutePath}")
             }
+        }.onFailure {
+            Log.w(TAG, "Exception capturing screenshot to ${file.absolutePath}: ${it.message}")
         }
-        Log.w(TAG, "Failed to capture screenshot $name to targets")
     }
 
     private inline fun <reified T : Activity> waitForActivity(timeoutMs: Long): T {

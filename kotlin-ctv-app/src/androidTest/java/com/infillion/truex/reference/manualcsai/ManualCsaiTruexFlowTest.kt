@@ -265,21 +265,17 @@ class ManualCsaiTruexFlowTest {
     }
 
     private fun takeScreenshot(name: String) {
-        val targets = listOf(
-            File("/data/local/tmp/test-artifacts", name),
-            File("/sdcard/Download", name),
-            File(InstrumentationRegistry.getInstrumentation().targetContext.cacheDir, name),
-        )
-        for (file in targets) {
-            runCatching {
-                file.parentFile?.mkdirs()
-                if (uiDevice.takeScreenshot(file)) {
-                    Log.i(TAG, "Saved screenshot to ${file.absolutePath}")
-                    return
-                }
+        val file = File("/sdcard/Download/test-artifacts", name)
+        runCatching {
+            file.parentFile?.mkdirs()
+            if (uiDevice.takeScreenshot(file)) {
+                Log.i(TAG, "Saved screenshot to ${file.absolutePath}")
+            } else {
+                Log.w(TAG, "Failed to capture screenshot to ${file.absolutePath}")
             }
+        }.onFailure {
+            Log.w(TAG, "Exception capturing screenshot to ${file.absolutePath}: ${it.message}")
         }
-        Log.w(TAG, "Failed to capture screenshot $name to targets")
     }
 
     private inline fun <reified T : Activity> waitForActivity(timeoutMs: Long): T {

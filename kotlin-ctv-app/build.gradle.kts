@@ -94,22 +94,23 @@ tasks.register<Exec>("runFunctionalUiTest") {
     commandLine(
         "bash", "-c",
         """
+        set -euo pipefail
         mkdir -p build/reports/test-artifacts && \
-        adb shell "mkdir -p /data/local/tmp/test-artifacts && rm -f /data/local/tmp/test-artifacts/*" && \
+        adb shell "mkdir -p /sdcard/Download/test-artifacts && rm -f /sdcard/Download/test-artifacts/*" && \
         adb install -r -t build/outputs/apk/debug/kotlin-ctv-app-debug.apk && \
         adb install -r -t build/outputs/apk/androidTest/debug/kotlin-ctv-app-debug-androidTest.apk && \
         adb logcat -c
         set +e
+        set -o pipefail
         adb shell am instrument -w -r -e package com.infillion.truex.reference.manualcsai com.infillion.truex.reference.test/androidx.test.runner.AndroidJUnitRunner | tee build/reports/test-artifacts/instrumentation_output.txt
         test_status=${'$'}?
 
         echo "=== DUMPING LOGCAT TO ARTIFACTS ==="
         adb logcat -d > build/reports/test-artifacts/logcat.txt
         echo "=== PULLING SCREENSHOTS FROM DEVICE ==="
-        adb pull /data/local/tmp/test-artifacts/. build/reports/test-artifacts/ || true
-        adb pull /sdcard/Download/. build/reports/test-artifacts/ || true
+        adb pull /sdcard/Download/test-artifacts/. build/reports/test-artifacts/ || true
 
-        if [ ${'$'}test_status -ne 0 ] || ! grep -E -q "OK \([0-9]+ tests?\)" build/reports/test-artifacts/instrumentation_output.txt; then
+        if [ ${'$'}test_status -ne 0 ] || ! grep -E -q "OK \([1-9][0-9]* tests?\)" build/reports/test-artifacts/instrumentation_output.txt; then
             echo "=== FUNCTIONAL UI TESTS FAILED ==="
             adb logcat -d -s ManualCsai ManualCsaiTruexFlowTest ManualCsaiIdvxFlowTest TruexAdRenderer TruexAdEvent
             exit 1
