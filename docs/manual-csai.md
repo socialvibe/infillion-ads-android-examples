@@ -89,3 +89,11 @@ The activity creates `TruexAdRenderer` and `TruexAdOptions` itself:
 - Confirm the ad-server `advertising-id` macro lands in `AdParameters` during integration certification.
 - Integrate the one-shot gate with the production timeline and persisted playback state.
 - Define production retry, telemetry, and renderer-error policy.
+
+## Sample tag configuration and test IP
+
+The sample VAST tags in `manual_ad_break.json` include `&ip=158.106.195.210` (Infillion's NYC office IP).
+Because the TrueX ad server currently serves ads in the US and Canada only, passing this parameter ensures
+sample ad requests are filled and not rejected during development. This allows distributed or international
+engineering teams (such as EU-based developers or CI runners) to test interactive ads reliably. Replace or
+remove this parameter with publisher-managed geo/IP handling in production.

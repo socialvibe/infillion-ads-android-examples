@@ -111,4 +111,9 @@ The reference Google IMA CSAI example requests its sample ad break from
 [`vast-preroll.xml`][csai_vast_preroll_link], which defines a client-side pod with TrueX, IDVx, and linear
 fallback ads.
 
+The sample tags inside `vast-preroll.xml` include `&ip=158.106.195.210` (Infillion's NYC office IP).
+Because the TrueX ad server currently serves ads in the US and Canada only, this parameter ensures test ads
+are filled and not rejected when testing from outside the US (for example, distributed or EU-based development
+teams) or in cloud CI environments.
+
 [csai_vast_preroll_link]: https://s3.us-east-1.amazonaws.com/stash.truex.com/sample-tags/ima-csai/fire-tv/vast-preroll.xml

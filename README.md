@@ -142,6 +142,10 @@ The sample uses:
 
 - Public reference content and linear-ad media.
 - Public TrueX and IDVx QA/reference payloads.
+- Test IP parameter (`&ip=158.106.195.210`): Infillion's NYC office IP address is included on sample VAST
+  tags to ensure ads are filled and not rejected during development and automated testing. The TrueX ad server
+  currently serves ads in the US and Canada only; passing this IP parameter enables distributed or non-US
+  development teams (such as EU-based engineers) and cloud CI runners to reliably test interactive ads.
 - Google IMA CSAI sample tag via [`vast-preroll.xml`][csai_vast_preroll_link].
 - Google DAI sample content ID `2496857` and video ID `truex-content22-4k` (Google Ad Manager configures 1
   preroll and 3 midrolls via [`ss_sab-vmap.xml`][ss_sab_vmap_link]
