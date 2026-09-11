@@ -7,6 +7,7 @@ on:
 
 permissions:
   contents: read
+  checks: write
 
 jobs:
   validate:
@@ -83,6 +84,14 @@ jobs:
       - name: Run unit tests
         run: ./gradlew testDebugUnitTest
 
+      - name: Report Unit Tests
+        uses: dorny/test-reporter@v3
+        if: always()
+        with:
+          name: Unit Tests Report
+          path: 'kotlin-ctv-app/build/test-results/**/*.xml'
+          reporter: java-junit
+
   ui-tests:
     name: Functional UI tests
     runs-on: ubuntu-latest
@@ -115,6 +124,14 @@ jobs:
           profile: tv_1080p
           disable-animations: true
           script: ./gradlew runFunctionalUiTest
+
+      - name: Report Functional UI Tests
+        uses: dorny/test-reporter@v3
+        if: always()
+        with:
+          name: Functional UI Tests Report
+          path: 'kotlin-ctv-app/build/reports/test-artifacts/TEST-*.xml'
+          reporter: java-junit
 
       - name: Upload Test Artifacts (Screenshots and Logcat)
         if: always()

@@ -110,6 +110,9 @@ tasks.register<Exec>("runFunctionalUiTest") {
         echo "=== PULLING SCREENSHOTS FROM DEVICE ==="
         adb pull /sdcard/Download/test-artifacts/. build/reports/test-artifacts/ || true
 
+        echo "=== CONVERTING INSTRUMENTATION TO JUNIT XML ==="
+        python3 ../scripts/parse_instrumentation_to_junit.py build/reports/test-artifacts/instrumentation_output.txt build/reports/test-artifacts/TEST-functional-ui.xml || true
+
         if [ ${'$'}test_status -ne 0 ] || ! grep -E -q "OK \([1-9][0-9]* tests?\)" build/reports/test-artifacts/instrumentation_output.txt; then
             echo "=== FUNCTIONAL UI TESTS FAILED ==="
             adb logcat -d -s ManualCsai ManualCsaiTruexFlowTest ManualCsaiIdvxFlowTest TruexAdRenderer TruexAdEvent

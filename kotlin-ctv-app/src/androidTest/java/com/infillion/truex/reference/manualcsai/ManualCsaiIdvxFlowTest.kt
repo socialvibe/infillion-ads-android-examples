@@ -236,13 +236,13 @@ class ManualCsaiIdvxFlowTest {
             Log.i(TAG, "Step 13: Verify player seeked over IDVx placeholder and started next ad in pod (airline-linear)")
             waitForCondition(
                 timeoutMs = 35_000L,
-                description = "Linear fallback ad (airline-linear) started",
-                details = { "status='${activity.statusTextForTesting}'" },
+                description = "Linear fallback ad (airline-linear) actively playing (not buffering)",
+                details = { "status='${activity.statusTextForTesting}', isPlaying=${activity.isPlayingForTesting}" },
             ) {
-                activity.statusTextForTesting.contains("airline-linear") ||
-                    activity.statusTextForTesting.contains("Linear fallback")
+                activity.isPlayingForTesting &&
+                    (activity.statusTextForTesting.contains("airline-linear") ||
+                        activity.statusTextForTesting.contains("Linear fallback"))
             }
-            SystemClock.sleep(1_000L)
             takeScreenshot("idvx_05_linear_fallback.png")
 
             Log.i(TAG, "Step 14: Print all TrueX and IDVx fired events")
@@ -265,12 +265,17 @@ class ManualCsaiIdvxFlowTest {
         val file = File("/sdcard/Download/test-artifacts", name)
         runCatching {
             file.parentFile?.mkdirs()
+            file.delete()
             uiDevice.executeShellCommand("screencap -p ${file.absolutePath}")
             if (file.exists() && file.length() > 0) {
                 Log.i(TAG, "Saved screenshot via screencap to ${file.absolutePath} (${file.length()} bytes)")
             } else {
-                uiDevice.takeScreenshot(file)
-                Log.i(TAG, "Fallback uiDevice screenshot to ${file.absolutePath}")
+                val fallbackOk = uiDevice.takeScreenshot(file)
+                if (fallbackOk && file.exists() && file.length() > 0) {
+                    Log.i(TAG, "Fallback uiDevice screenshot saved to ${file.absolutePath} (${file.length()} bytes)")
+                } else {
+                    Log.w(TAG, "Failed to capture screenshot to ${file.absolutePath}")
+                }
             }
         }.onFailure {
             Log.w(TAG, "Exception capturing screenshot to ${file.absolutePath}: ${it.message}")

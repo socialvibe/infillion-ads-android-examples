@@ -258,14 +258,15 @@ class ManualCsaiTruexFlowTest {
             )
 
             waitForCondition(
-                timeoutMs = 20_000L,
-                description = "Content playback resumed with ad-free reward applied",
+                timeoutMs = 25_000L,
+                description = "Content playback resumed and actively playing (not buffering)",
+                details = { "status='${activity.statusTextForTesting}', isPlaying=${activity.isPlayingForTesting}" },
             ) {
                 !activity.isPlayingAdPodForTesting &&
+                    activity.isPlayingForTesting &&
                     (activity.statusTextForTesting.contains("TrueX credit earned") ||
                         activity.statusTextForTesting.startsWith("Content •"))
             }
-            SystemClock.sleep(1_000L)
             takeScreenshot("truex_05_content_resumed.png")
 
             Log.i(TAG, "Step 15: Complete the case")
@@ -279,12 +280,17 @@ class ManualCsaiTruexFlowTest {
         val file = File("/sdcard/Download/test-artifacts", name)
         runCatching {
             file.parentFile?.mkdirs()
+            file.delete()
             uiDevice.executeShellCommand("screencap -p ${file.absolutePath}")
             if (file.exists() && file.length() > 0) {
                 Log.i(TAG, "Saved screenshot via screencap to ${file.absolutePath} (${file.length()} bytes)")
             } else {
-                uiDevice.takeScreenshot(file)
-                Log.i(TAG, "Fallback uiDevice screenshot to ${file.absolutePath}")
+                val fallbackOk = uiDevice.takeScreenshot(file)
+                if (fallbackOk && file.exists() && file.length() > 0) {
+                    Log.i(TAG, "Fallback uiDevice screenshot saved to ${file.absolutePath} (${file.length()} bytes)")
+                } else {
+                    Log.w(TAG, "Failed to capture screenshot to ${file.absolutePath}")
+                }
             }
         }.onFailure {
             Log.w(TAG, "Exception capturing screenshot to ${file.absolutePath}: ${it.message}")
