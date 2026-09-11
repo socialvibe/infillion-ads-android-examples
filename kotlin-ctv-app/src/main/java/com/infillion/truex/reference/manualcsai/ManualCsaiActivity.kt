@@ -406,6 +406,23 @@ class ManualCsaiActivity : AppCompatActivity() {
         } else 0L
 
     @VisibleForTesting
+    val isPlayingForTesting: Boolean
+        get() = if (::player.isInitialized) {
+            if (Looper.myLooper() == Looper.getMainLooper()) {
+                player.isPlaying
+            } else {
+                var playing = false
+                val latch = CountDownLatch(1)
+                runOnUiThread {
+                    playing = if (::player.isInitialized) player.isPlaying else false
+                    latch.countDown()
+                }
+                latch.await(500L, TimeUnit.MILLISECONDS)
+                playing
+            }
+        } else false
+
+    @VisibleForTesting
     val statusTextForTesting: String
         get() = if (::binding.isInitialized) binding.statusText.text.toString() else ""
 

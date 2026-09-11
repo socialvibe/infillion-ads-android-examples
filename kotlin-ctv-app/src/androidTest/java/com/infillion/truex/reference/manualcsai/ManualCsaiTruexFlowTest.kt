@@ -108,11 +108,19 @@ class ManualCsaiTruexFlowTest {
                     fail("TrueX renderer emitted AD_ERROR. Status: ${activity.statusTextForTesting}")
                 }
                 activity.isRendererContainerVisibleForTesting &&
-                    (caughtEvents.contains(TruexAdEvent.AD_STARTED) ||
-                        caughtEvents.contains(TruexAdEvent.AD_DISPLAYED) ||
-                        activity.statusTextForTesting.contains("AD_STARTED"))
+                    (caughtEvents.contains(TruexAdEvent.AD_DISPLAYED) ||
+                        (caughtEvents.contains(TruexAdEvent.AD_STARTED) &&
+                            activity.statusTextForTesting.contains("AD_STARTED")))
+            }
+            waitForCondition(
+                timeoutMs = 15_000L,
+                description = "Choice card assets loaded and visible (AD_DISPLAYED)",
+                details = { "events=$caughtEvents" },
+            ) {
+                caughtEvents.contains(TruexAdEvent.AD_DISPLAYED)
             }
             Log.i(TAG, "Choice card is visible. Status: ${activity.statusTextForTesting}")
+            SystemClock.sleep(1_500L)
             takeScreenshot("truex_01_choice_card.png")
 
             Log.i(TAG, "Step 7: Select watch, then back to interactive option")
@@ -137,19 +145,21 @@ class ManualCsaiTruexFlowTest {
                     activity.statusTextForTesting.contains("OPT_IN")
             }
             Log.i(TAG, "Viewer successfully opted in to interactive experience")
+            SystemClock.sleep(1_000L)
             takeScreenshot("truex_02_opt_in.png")
 
             Log.i(TAG, "Step 9: Verify an interactive portion started")
             waitForCondition(
-                timeoutMs = 45_000L,
-                description = "Interactive portion assets loaded and displayed",
+                timeoutMs = 15_000L,
+                description = "Interactive portion assets active",
                 details = { "status='${activity.statusTextForTesting}', events=$caughtEvents" },
             ) {
                 activity.isRendererContainerVisibleForTesting &&
-                    (caughtEvents.contains(TruexAdEvent.AD_DISPLAYED) ||
+                    (caughtEvents.contains(TruexAdEvent.OPT_IN) ||
                         activity.statusTextForTesting.contains("Interactive ad"))
             }
             Log.i(TAG, "Interactive engagement portion is actively displaying")
+            SystemClock.sleep(2_500L)
             takeScreenshot("truex_03_interactive.png")
 
             Log.i(TAG, "Step 10: Make 1 interactive event to achieve interaction goal")
@@ -248,10 +258,12 @@ class ManualCsaiTruexFlowTest {
             )
 
             waitForCondition(
-                timeoutMs = 20_000L,
-                description = "Content playback resumed with ad-free reward applied",
+                timeoutMs = 25_000L,
+                description = "Content playback resumed and actively playing (not buffering)",
+                details = { "status='${activity.statusTextForTesting}', isPlaying=${activity.isPlayingForTesting}" },
             ) {
                 !activity.isPlayingAdPodForTesting &&
+                    activity.isPlayingForTesting &&
                     (activity.statusTextForTesting.contains("TrueX credit earned") ||
                         activity.statusTextForTesting.startsWith("Content •"))
             }
@@ -268,10 +280,17 @@ class ManualCsaiTruexFlowTest {
         val file = File("/sdcard/Download/test-artifacts", name)
         runCatching {
             file.parentFile?.mkdirs()
-            if (uiDevice.takeScreenshot(file)) {
-                Log.i(TAG, "Saved screenshot to ${file.absolutePath}")
+            file.delete()
+            uiDevice.executeShellCommand("screencap -p ${file.absolutePath}")
+            if (file.exists() && file.length() > 0) {
+                Log.i(TAG, "Saved screenshot via screencap to ${file.absolutePath} (${file.length()} bytes)")
             } else {
-                Log.w(TAG, "Failed to capture screenshot to ${file.absolutePath}")
+                val fallbackOk = uiDevice.takeScreenshot(file)
+                if (fallbackOk && file.exists() && file.length() > 0) {
+                    Log.i(TAG, "Fallback uiDevice screenshot saved to ${file.absolutePath} (${file.length()} bytes)")
+                } else {
+                    Log.w(TAG, "Failed to capture screenshot to ${file.absolutePath}")
+                }
             }
         }.onFailure {
             Log.w(TAG, "Exception capturing screenshot to ${file.absolutePath}: ${it.message}")
