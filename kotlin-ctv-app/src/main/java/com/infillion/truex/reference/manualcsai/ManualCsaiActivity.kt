@@ -199,6 +199,8 @@ class ManualCsaiActivity : AppCompatActivity() {
                     "IDVx interactive ad • starting renderer"
                 },
             )
+            // Stop loading the paused media so it can't report errors while the renderer runs.
+            player.stop()
             showInteractiveAd(ad)
             return
         }
