@@ -13,6 +13,7 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
+import androidx.lifecycle.Lifecycle;
 import androidx.media3.common.MediaItem;
 import androidx.media3.common.PlaybackException;
 import androidx.media3.common.Player;
@@ -49,6 +50,8 @@ public class ManualCsaiActivity extends AppCompatActivity {
     private long contentPositionMs;
     private int currentAdIndex = -1;
     private boolean playingAdPod;
+    private boolean startContentOnResume;
+    private boolean playWhenReadyBeforePause;
 
     private final Player.Listener playerListener = new Player.Listener() {
         @Override
@@ -222,14 +225,25 @@ public class ManualCsaiActivity extends AppCompatActivity {
         }
         ManualAdBreak resolved = adBreak.withAds(resolvedAds);
         runOnUiThread(() -> {
-            if (isFinishing()) {
+            // The activity may have been destroyed (and its player released) while VAST was loading.
+            if (isFinishing() || isDestroyed()) {
                 return;
             }
             adBreak = resolved;
-            Log.i(TAG, "VAST resolution complete; starting content playback from 0ms");
-            playContent(0L);
-            playerContainer.post(midrollCheck);
+            // Don't start playback in the background; onResume() starts it once the viewer returns.
+            if (!getLifecycle().getCurrentState().isAtLeast(Lifecycle.State.RESUMED)) {
+                Log.i(TAG, "VAST resolution complete while paused; starting content on resume");
+                startContentOnResume = true;
+                return;
+            }
+            startContent();
         });
+    }
+
+    private void startContent() {
+        Log.i(TAG, "VAST resolution complete; starting content playback from 0ms");
+        playContent(0L);
+        playerContainer.post(midrollCheck);
     }
 
     // [1] The host app owns the content timeline and decides when the ad break starts.
@@ -399,9 +413,13 @@ public class ManualCsaiActivity extends AppCompatActivity {
     protected void onResume() {
         super.onResume();
         Log.i(TAG, "onResume: truexAdRendererActive=" + (truexAdRenderer != null));
-        if (truexAdRenderer != null) {
+        if (startContentOnResume) {
+            startContentOnResume = false;
+            startContent();
+        } else if (truexAdRenderer != null) {
             truexAdRenderer.resume();
-        } else {
+        } else if (playWhenReadyBeforePause) {
+            // Resume only what was playing before; keep a pause the viewer made with the touch controls.
             player.play();
         }
     }
@@ -412,6 +430,7 @@ public class ManualCsaiActivity extends AppCompatActivity {
         if (truexAdRenderer != null) {
             truexAdRenderer.pause();
         }
+        playWhenReadyBeforePause = player.getPlayWhenReady();
         player.pause();
         super.onPause();
     }

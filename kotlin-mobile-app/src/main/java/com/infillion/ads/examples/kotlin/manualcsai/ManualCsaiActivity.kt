@@ -6,6 +6,7 @@ import android.os.Bundle
 import android.util.Log
 import android.view.View
 import androidx.appcompat.app.AppCompatActivity
+import androidx.lifecycle.Lifecycle
 import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
@@ -29,6 +30,8 @@ class ManualCsaiActivity : AppCompatActivity() {
     private var contentPositionMs = 0L
     private var currentAdIndex = -1
     private var playingAdPod = false
+    private var startContentOnResume = false
+    private var playWhenReadyBeforePause = false
 
     private val playerListener = object : Player.Listener {
         override fun onPlaybackStateChanged(playbackState: Int) {
@@ -175,14 +178,25 @@ class ManualCsaiActivity : AppCompatActivity() {
             },
         )
         runOnUiThread {
-            if (isFinishing) {
+            // The activity may have been destroyed (and its player released) while VAST was loading.
+            if (isFinishing || isDestroyed) {
                 return@runOnUiThread
             }
             adBreak = resolved
-            Log.i(TAG, "VAST resolution complete; starting content playback from 0ms")
-            playContent(0L)
-            binding.root.post(midrollCheck)
+            // Don't start playback in the background; onResume() starts it once the viewer returns.
+            if (!lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)) {
+                Log.i(TAG, "VAST resolution complete while paused; starting content on resume")
+                startContentOnResume = true
+                return@runOnUiThread
+            }
+            startContent()
         }
+    }
+
+    private fun startContent() {
+        Log.i(TAG, "VAST resolution complete; starting content playback from 0ms")
+        playContent(0L)
+        binding.root.post(midrollCheck)
     }
 
     // [1] The host app owns the content timeline and decides when the ad break starts.
@@ -347,9 +361,13 @@ class ManualCsaiActivity : AppCompatActivity() {
     override fun onResume() {
         super.onResume()
         Log.i(TAG, "onResume: truexAdRendererActive=${truexAdRenderer != null}")
-        if (truexAdRenderer != null) {
+        if (startContentOnResume) {
+            startContentOnResume = false
+            startContent()
+        } else if (truexAdRenderer != null) {
             truexAdRenderer?.resume()
-        } else {
+        } else if (playWhenReadyBeforePause) {
+            // Resume only what was playing before; keep a pause the viewer made with the touch controls.
             player.play()
         }
     }
@@ -359,6 +377,7 @@ class ManualCsaiActivity : AppCompatActivity() {
         if (truexAdRenderer != null) {
             truexAdRenderer?.pause()
         }
+        playWhenReadyBeforePause = player.playWhenReady
         player.pause()
         super.onPause()
     }
