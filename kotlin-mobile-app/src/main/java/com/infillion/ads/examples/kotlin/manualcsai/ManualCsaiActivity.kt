@@ -1,0 +1,380 @@
+package com.infillion.ads.examples.kotlin.manualcsai
+
+import android.content.Intent
+import android.net.Uri
+import android.os.Bundle
+import android.util.Log
+import android.view.View
+import androidx.appcompat.app.AppCompatActivity
+import androidx.media3.common.MediaItem
+import androidx.media3.common.PlaybackException
+import androidx.media3.common.Player
+import androidx.media3.exoplayer.ExoPlayer
+import com.infillion.ads.examples.kotlin.BuildConfig
+import com.infillion.ads.examples.kotlin.R
+import com.infillion.ads.examples.kotlin.databinding.ActivityManualCsaiBinding
+import com.truex.adrenderer.IEventEmitter
+import com.truex.adrenderer.TruexAdEvent
+import com.truex.adrenderer.TruexAdOptions
+import com.truex.adrenderer.TruexAdRenderer
+
+class ManualCsaiActivity : AppCompatActivity() {
+    private lateinit var binding: ActivityManualCsaiBinding
+    private lateinit var player: ExoPlayer
+    private lateinit var adBreak: ManualAdBreak
+    private lateinit var midrollGate: MidrollGate
+    private var truexAdRenderer: TruexAdRenderer? = null
+    private var truexAdCreditReceived = false
+    private var truexAdTerminalEvent = false
+    private var contentPositionMs = 0L
+    private var currentAdIndex = -1
+    private var playingAdPod = false
+
+    private val playerListener = object : Player.Listener {
+        override fun onPlaybackStateChanged(playbackState: Int) {
+            Log.i(TAG, "onPlaybackStateChanged: playbackState=$playbackState, playingAdPod=$playingAdPod")
+            if (playbackState == Player.STATE_ENDED && playingAdPod) {
+                Log.i(TAG, "Ad ended; advancing ad pod")
+                advanceAdPod()
+            }
+        }
+
+        override fun onPlayerError(error: PlaybackException) {
+            Log.e(TAG, "ExoPlayer playback error: ${error.errorCodeName}")
+            showStatus("Playback error: ${error.errorCodeName}. Continuing safely.")
+            if (playingAdPod) {
+                advanceAdPod()
+            } else {
+                finish()
+            }
+        }
+    }
+
+    private val midrollCheck = object : Runnable {
+        override fun run() {
+            if (!playingAdPod && midrollGate.shouldTrigger(player.currentPosition)) {
+                Log.i(TAG, "Midroll trigger reached at ${player.currentPosition}ms")
+                startAdBreak()
+            }
+            if (!isFinishing) {
+                binding.root.postDelayed(this, 250L)
+            }
+        }
+    }
+
+    // Handles lifecycle and user-interaction events emitted by TruexAdRenderer.
+    private val truexAdEventHandler = IEventEmitter.IEventHandler { event, data ->
+        Log.i(TAG, "TruexAdEvent $event data=$data")
+        when (event) {
+            // Main flow events
+            TruexAdEvent.AD_FETCH_COMPLETED -> {
+                Log.i(TAG, "TrueX renderer finished fetching ad payload and is ready to present")
+            }
+            TruexAdEvent.AD_STARTED -> {
+                // Interactive unit has started displaying to the viewer
+                Log.i(TAG, "TrueX interactive unit started")
+                showStatus("Interactive ad • $event")
+            }
+            TruexAdEvent.AD_DISPLAYED -> {
+                Log.i(TAG, "TrueX interactive assets loaded and visible")
+            }
+            TruexAdEvent.AD_FREE_POD -> {
+                // The viewer completed the requirements to earn the ad-free pod reward.
+                // Do not skip immediately; wait for a terminal event (AD_COMPLETED) before skipping the pod.
+                Log.i(TAG, "TrueX credit earned (AD_FREE_POD); waiting for terminal event to skip remaining pod")
+                truexAdCreditReceived = true
+            }
+            TruexAdEvent.USER_CANCEL_STREAM -> {
+                // The viewer pressed Back on the choice card or exit prompt to leave playback entirely.
+                Log.i(TAG, "Viewer cancelled stream via USER_CANCEL_STREAM")
+                showStatus("Viewer cancelled the stream")
+                finish()
+            }
+            // Terminal events
+            TruexAdEvent.AD_COMPLETED,
+            TruexAdEvent.AD_ERROR,
+            TruexAdEvent.NO_ADS_AVAILABLE -> {
+                Log.i(TAG, "Terminal TrueX event received: $event")
+                finishTruexAd(event)
+            }
+            // Informative events
+            TruexAdEvent.OPT_IN -> {
+                // Viewer selected the interactive engagement over regular linear ads
+                Log.i(TAG, "Viewer opted in to interactive experience")
+                showStatus("Interactive ad • $event")
+            }
+            TruexAdEvent.OPT_OUT -> {
+                // Viewer chose linear fallback or the choice-card timer expired
+                Log.i(TAG, "Viewer opted out of interactive experience")
+                showStatus("Interactive ad • $event")
+            }
+            TruexAdEvent.USER_CANCEL -> {
+                // Viewer backed out of the interactive engagement after opting in
+                Log.i(TAG, "Viewer backed out of engagement (USER_CANCEL)")
+            }
+            TruexAdEvent.POPUP_WEBSITE -> {
+                // The ad asks to open an advertiser page; onPause/onResume pause and resume the renderer.
+                val url = data?.get("url") as? String
+                Log.i(TAG, "Opening advertiser page: $url")
+                if (url != null) {
+                    runCatching { startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url))) }
+                        .onFailure { error -> Log.w(TAG, "No app can open $url: ${error.message}") }
+                }
+            }
+            TruexAdEvent.VIDEO_EVENT -> {
+                // Video progress inside the interactive unit; not required for host timeline management
+            }
+            else -> Unit
+        }
+    }
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        Log.i(TAG, "onCreate: initializing ManualCsaiActivity")
+        binding = ActivityManualCsaiBinding.inflate(layoutInflater)
+        setContentView(binding.root)
+        setSupportActionBar(binding.toolbar)
+        supportActionBar?.setTitle(R.string.manual_csai_title)
+        supportActionBar?.setDisplayHomeAsUpEnabled(true)
+
+        adBreak = ManualAdBreakParser.parse(this, R.raw.manual_ad_break)
+        midrollGate = MidrollGate(adBreak.timeOffsetMs)
+        player = ExoPlayer.Builder(this).build().also {
+            binding.playerView.player = it
+            it.addListener(playerListener)
+        }
+        showStatus("Loading VAST ad parameters")
+        Log.i(TAG, "Resolving VAST ad parameters asynchronously")
+        Thread(::resolveVastAndStart, "manual-vast-load").start()
+    }
+
+    override fun onSupportNavigateUp(): Boolean {
+        finish()
+        return true
+    }
+
+    private fun resolveVastAndStart() {
+        val userId = newReferenceUserId()
+        Log.i(TAG, "VAST user-id generated: $userId")
+        val resolved = adBreak.copy(
+            ads = adBreak.ads.map { ad ->
+                val url = ad.vastUrl?.let { applyVastUserId(it, userId) } ?: return@map ad
+                var payload: org.json.JSONObject? = null
+                for (attempt in 1..3) {
+                    payload = runCatching { ManualVastPayloadParser.load(url) }
+                        .onFailure { error ->
+                            Log.w(TAG, "Attempt $attempt: Failed to load VAST from $url: ${error.message}")
+                        }
+                        .getOrNull()
+                    if (payload != null) {
+                        break
+                    }
+                    Thread.sleep(500L)
+                }
+                payload?.let { ad.copy(vastUrl = url, adParameters = it) } ?: ad.copy(vastUrl = url)
+            },
+        )
+        runOnUiThread {
+            if (isFinishing) {
+                return@runOnUiThread
+            }
+            adBreak = resolved
+            Log.i(TAG, "VAST resolution complete; starting content playback from 0ms")
+            playContent(0L)
+            binding.root.post(midrollCheck)
+        }
+    }
+
+    // [1] The host app owns the content timeline and decides when the ad break starts.
+    private fun startAdBreak() {
+        contentPositionMs = player.currentPosition
+        Log.i(TAG, "startAdBreak: pausing content at ${contentPositionMs}ms and starting ad pod ${adBreak.id}")
+        player.pause()
+        // Viewers can't seek or skip ads with the touch controls.
+        binding.playerView.useController = false
+        playingAdPod = true
+        currentAdIndex = 0
+        showStatus("Simulated ad response loaded • ${adBreak.id}")
+        playCurrentAd()
+    }
+
+    private fun playCurrentAd() {
+        val ad = currentAdOrNull()
+        if (ad == null) {
+            Log.i(TAG, "playCurrentAd: no more ads in pod; completing ad break")
+            finishAdBreak("Ad pod complete")
+            return
+        }
+        Log.i(TAG, "playCurrentAd: index=$currentAdIndex, adId=${ad.id}, type=${ad.type}, mediaUrl=${ad.mediaUrl}")
+        // The host owns playback, so interactive ads skip their placeholder video and start the renderer directly.
+        if (ad.type != ManualAdType.LINEAR) {
+            showStatus(
+                if (ad.type == ManualAdType.TRUEX) {
+                    "TrueX interactive ad • starting renderer"
+                } else {
+                    "IDVx interactive ad • starting renderer"
+                },
+            )
+            // Stop loading the paused media so it can't report errors while the renderer runs.
+            player.stop()
+            showInteractiveAd(ad)
+            return
+        }
+        showStatus("Linear fallback • ${ad.id}")
+        binding.playerView.visibility = View.VISIBLE
+        player.setMediaItem(MediaItem.fromUri(ad.mediaUrl))
+        player.prepare()
+        player.play()
+    }
+
+    // [2] TAR owns the overlay while the paused player stays hidden.
+    private fun showInteractiveAd(ad: ManualAd) {
+        val adParameters = ad.adParameters
+        if (adParameters == null) {
+            Log.e(TAG, "showInteractiveAd: ad ${ad.id} has no adParameters; continuing fallback pod")
+            showStatus("Renderer setup failed: Interactive ad ${ad.id} has no ad parameters. Continuing fallback pod.")
+            completeInteractiveAd(shouldSkipPod = false)
+            return
+        }
+        Log.i(TAG, "showInteractiveAd: hiding player and presenting TrueX renderer container for ${ad.type}")
+        binding.playerView.visibility = View.INVISIBLE
+        binding.rendererContainer.visibility = View.VISIBLE
+        // The renderer takes the whole screen on a phone.
+        binding.toolbar.visibility = View.GONE
+        binding.statusText.visibility = View.GONE
+        truexAdCreditReceived = false
+        truexAdTerminalEvent = false
+
+        // Configure TrueX ad options:
+        // - supportsUserCancelStream: enables Back button to trigger USER_CANCEL_STREAM
+        // - appId: package name for telemetry attribution
+        // - enableWebViewDebugging: allows inspect via chrome://inspect in debug builds
+        val newRenderer = TruexAdRenderer(this).also { tar ->
+            tar.addEventListener(null, truexAdEventHandler)
+            tar.init(
+                adParameters,
+                TruexAdOptions().apply {
+                    supportsUserCancelStream = true
+                    appId = packageName
+                    enableWebViewDebugging = BuildConfig.DEBUG
+                },
+            )
+        }
+        truexAdRenderer = newRenderer
+        Log.i(TAG, "Starting TruexAdRenderer inside rendererContainer")
+        runCatching { newRenderer.start(binding.rendererContainer) }
+            .onFailure { error ->
+                Log.e(TAG, "Failed to start TruexAdRenderer: ${error.message}")
+                showStatus("Renderer setup failed: ${error.message}. Continuing fallback pod.")
+                completeInteractiveAd(shouldSkipPod = false)
+            }
+    }
+
+    // [3] Terminal event processing: AD_FREE_POD credit skips remaining pod only on AD_COMPLETED.
+    private fun finishTruexAd(event: TruexAdEvent) {
+        if (truexAdTerminalEvent) {
+            return
+        }
+        truexAdTerminalEvent = true
+        Log.i(TAG, "finishTruexAd: event=$event, creditReceived=$truexAdCreditReceived")
+        showStatus("Renderer finished: $event")
+        completeInteractiveAd(shouldSkipPod = truexAdCreditReceived && event == TruexAdEvent.AD_COMPLETED)
+    }
+
+    private fun completeInteractiveAd(shouldSkipPod: Boolean) {
+        val ad = currentAdOrNull()
+        if (ad == null) {
+            return
+        }
+        Log.i(TAG, "completeInteractiveAd: adType=${ad.type}, shouldSkipPod=$shouldSkipPod")
+        disposeRenderer()
+        if (shouldSkipRemainingPod(ad.type, shouldSkipPod)) {
+            Log.i(TAG, "completeInteractiveAd: TrueX credit earned; skipping remaining ads in pod")
+            finishAdBreak("TrueX credit earned • remaining ads skipped")
+            return
+        }
+        // Opt-out, error, cancel, or IDVx: continue with the next ad in the pod.
+        Log.i(TAG, "completeInteractiveAd: ${ad.type} complete without pod skip; continuing fallback pod")
+        showStatus("${ad.type} complete • continuing fallback pod")
+        advanceAdPod()
+    }
+
+    private fun advanceAdPod() {
+        currentAdIndex += 1
+        Log.i(TAG, "advanceAdPod: advancing to ad index $currentAdIndex")
+        playCurrentAd()
+    }
+
+    private fun finishAdBreak(message: String) {
+        Log.i(TAG, "finishAdBreak: $message; resuming content at ${contentPositionMs}ms")
+        playingAdPod = false
+        currentAdIndex = -1
+        disposeRenderer()
+        binding.playerView.useController = true
+        showStatus(message)
+        playContent(contentPositionMs)
+    }
+
+    private fun playContent(positionMs: Long) {
+        Log.i(TAG, "playContent: setting content media item at ${positionMs}ms")
+        binding.playerView.visibility = View.VISIBLE
+        player.setMediaItem(MediaItem.fromUri(CONTENT_URL), positionMs)
+        player.prepare()
+        player.play()
+        showStatus("Content • midroll at ${adBreak.timeOffsetMs / 1_000}s")
+    }
+
+    private fun currentAdOrNull(): ManualAd? = adBreak.ads.getOrNull(currentAdIndex)
+
+    private fun showStatus(message: String) {
+        Log.i(TAG, "Status: $message")
+        binding.statusText.text = message
+    }
+
+    private fun disposeRenderer() {
+        Log.i(TAG, "disposeRenderer: releasing TruexAdRenderer and resetting container")
+        truexAdRenderer?.removeEventListener(null, truexAdEventHandler)
+        truexAdRenderer?.stop()
+        truexAdRenderer = null
+        truexAdCreditReceived = false
+        truexAdTerminalEvent = false
+        binding.rendererContainer.removeAllViews()
+        binding.rendererContainer.visibility = View.GONE
+        binding.toolbar.visibility = View.VISIBLE
+        binding.statusText.visibility = View.VISIBLE
+    }
+
+    override fun onResume() {
+        super.onResume()
+        Log.i(TAG, "onResume: truexAdRendererActive=${truexAdRenderer != null}")
+        if (truexAdRenderer != null) {
+            truexAdRenderer?.resume()
+        } else {
+            player.play()
+        }
+    }
+
+    override fun onPause() {
+        Log.i(TAG, "onPause: truexAdRendererActive=${truexAdRenderer != null}")
+        if (truexAdRenderer != null) {
+            truexAdRenderer?.pause()
+        }
+        player.pause()
+        super.onPause()
+    }
+
+    override fun onDestroy() {
+        Log.i(TAG, "onDestroy: releasing resources and player")
+        binding.root.removeCallbacks(midrollCheck)
+        disposeRenderer()
+        player.removeListener(playerListener)
+        binding.playerView.player = null
+        player.release()
+        super.onDestroy()
+    }
+
+    private companion object {
+        const val TAG = "InfillionAdsExamples"
+        const val CONTENT_URL = "https://ctv.truex.com/assets/reference-app-stream-no-ads-720p.mp4"
+    }
+}

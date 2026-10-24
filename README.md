@@ -1,7 +1,14 @@
-# Infillion TrueX Android TV Examples
+# Infillion TrueX Android Examples
 
-An Android TV reference app demonstrating three complete ways to add Infillion interactive ads to a Media3
-player:
+Android TV and mobile reference apps that add Infillion interactive ads to a Media3 player:
+
+| App | Platform | Language | Examples |
+| --- | --- | --- | --- |
+| `kotlin-ctv-app` | Android TV | Kotlin | Manual CSAI, Google IMA CSAI, Google IMA SSAI |
+| `kotlin-mobile-app` | Phone / tablet | Kotlin | Manual CSAI |
+| `java-mobile-app` | Phone / tablet | Java | Manual CSAI |
+
+The Android TV app demonstrates three complete integrations:
 
 | Example | Ad source | Midroll behavior |
 | --- | --- | --- |
@@ -111,15 +118,18 @@ Across all three integration examples, the app implements a consistent fallback 
 
 - Android Studio with JDK 17
 - Android SDK 35
-- Android TV device or emulator running API 28 or newer
+- Android TV device or emulator running API 28 or newer for `kotlin-ctv-app`
+- Phone or tablet device or emulator running API 28 or newer for `kotlin-mobile-app` and `java-mobile-app`
 - Network access to the sample media, Google IMA, and the TrueX renderer Maven repository
 
 ### Android Studio
 
 1. Open the repository in Android Studio.
-2. Create or select an Android TV virtual device.
-3. Run the `kotlin-ctv-app` configuration.
-4. Use the D-pad to focus an integration and press the center/select key.
+2. Create or select an Android TV virtual device for the CTV app, or a phone virtual device for the mobile
+   apps.
+3. Run the `kotlin-ctv-app`, `kotlin-mobile-app`, or `java-mobile-app` configuration.
+4. On TV, use the D-pad to focus an integration and press the center/select key. On a phone, tap an example
+   card.
 
 ### Command line
 
@@ -127,8 +137,11 @@ Across all three integration examples, the app implements a consistent fallback 
 ./gradlew assembleDebug
 ```
 
-Install `kotlin-ctv-app/build/outputs/apk/debug/kotlin-ctv-app-debug.apk` on an Android TV device or
-emulator.
+Install one of the APKs:
+
+- `kotlin-ctv-app/build/outputs/apk/debug/kotlin-ctv-app-debug.apk` on an Android TV device or emulator.
+- `kotlin-mobile-app/build/outputs/apk/debug/kotlin-mobile-app-debug.apk` or
+  `java-mobile-app/build/outputs/apk/debug/java-mobile-app-debug.apk` on a phone or tablet.
 
 Each example begins content playback and displays its current content, ad-request, linear-ad, interactive-ad,
 recovery, or error state in the upper-left status panel.
@@ -158,6 +171,7 @@ No credentials, signing keys, or production publisher configuration are included
 - [Plain / Manual CSAI](docs/manual-csai.md)
 - [Google IMA CSAI](docs/ima-csai.md)
 - [Google IMA SSAI](docs/ima-ssai.md)
+- [Plain / Manual CSAI (mobile, Kotlin and Java)](docs/mobile-manual-csai.md)
 
 Each guide names the package to copy, the key event transitions, and the production concerns intentionally
 left outside this reference app.

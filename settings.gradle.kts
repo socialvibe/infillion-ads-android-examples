@@ -17,4 +17,6 @@ dependencyResolutionManagement {
 
 rootProject.name = "TrueXAndroidExamples"
 include(":kotlin-ctv-app")
+include(":kotlin-mobile-app")
+include(":java-mobile-app")
 

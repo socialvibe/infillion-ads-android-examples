@@ -89,7 +89,7 @@ jobs:
         if: always() && github.event.pull_request.head.repo.full_name == github.repository
         with:
           name: Unit Tests Report
-          path: 'kotlin-ctv-app/build/test-results/**/*.xml'
+          path: '*/build/test-results/**/*.xml'
           reporter: java-junit
 
   ui-tests:
@@ -123,7 +123,7 @@ jobs:
           arch: x86
           profile: tv_1080p
           disable-animations: true
-          script: ./gradlew connectedDebugAndroidTest
+          script: ./gradlew :kotlin-ctv-app:connectedDebugAndroidTest
 
       - name: Report Functional UI Tests
         uses: dorny/test-reporter@v3
