@@ -31,36 +31,14 @@ class ManualCsaiActivity : AppCompatActivity() {
     private var contentPositionMs = 0L
     private var currentAdIndex = -1
     private var playingAdPod = false
-    private var waitingForInteractivePlaceholderEnd = false
     private val testEventListeners = mutableListOf<(TruexAdEvent, Map<*, *>?) -> Unit>()
 
     private val playerListener = object : Player.Listener {
         override fun onPlaybackStateChanged(playbackState: Int) {
-            Log.i(TAG, "onPlaybackStateChanged: playbackState=$playbackState, playingAdPod=$playingAdPod, waitingForPlaceholderEnd=$waitingForInteractivePlaceholderEnd")
-            if (playbackState == Player.STATE_READY && playingAdPod) {
-                val ad = currentAdOrNull()
-                if (ad == null) {
-                    return
-                }
-                // When an interactive ad placeholder begins playback, seek near its end and pause.
-                // The underlying video player is hidden while TruexAdRenderer takes over the screen.
-                if (ad.type != ManualAdType.LINEAR && truexAdRenderer == null) {
-                    val end = player.duration.takeIf { it > 200L } ?: ad.durationMs
-                    Log.i(TAG, "Interactive placeholder ready; seeking near end (${end - 100L}ms) and displaying TrueX renderer")
-                    player.seekTo(end - 100L)
-                    player.pause()
-                    showInteractiveAd(ad)
-                }
-            }
-            if (playbackState == Player.STATE_ENDED) {
-                if (waitingForInteractivePlaceholderEnd) {
-                    Log.i(TAG, "Interactive placeholder ended after fallback; advancing ad pod")
-                    waitingForInteractivePlaceholderEnd = false
-                    advanceAdPod()
-                } else if (playingAdPod) {
-                    Log.i(TAG, "Ad ended; advancing ad pod")
-                    advanceAdPod()
-                }
+            Log.i(TAG, "onPlaybackStateChanged: playbackState=$playbackState, playingAdPod=$playingAdPod")
+            if (playbackState == Player.STATE_ENDED && playingAdPod) {
+                Log.i(TAG, "Ad ended; advancing ad pod")
+                advanceAdPod()
             }
         }
 
@@ -212,20 +190,26 @@ class ManualCsaiActivity : AppCompatActivity() {
             return
         }
         Log.i(TAG, "playCurrentAd: index=$currentAdIndex, adId=${ad.id}, type=${ad.type}, mediaUrl=${ad.mediaUrl}")
-        showStatus(
-            when (ad.type) {
-                ManualAdType.LINEAR -> "Linear fallback • ${ad.id}"
-                ManualAdType.TRUEX -> "TrueX placeholder • waiting for renderer"
-                ManualAdType.IDVX -> "IDVx placeholder • waiting for renderer"
-            },
-        )
+        // The host owns playback, so interactive ads skip their placeholder video and start the renderer directly.
+        if (ad.type != ManualAdType.LINEAR) {
+            showStatus(
+                if (ad.type == ManualAdType.TRUEX) {
+                    "TrueX interactive ad • starting renderer"
+                } else {
+                    "IDVx interactive ad • starting renderer"
+                },
+            )
+            showInteractiveAd(ad)
+            return
+        }
+        showStatus("Linear fallback • ${ad.id}")
         binding.playerView.visibility = View.VISIBLE
         player.setMediaItem(MediaItem.fromUri(ad.mediaUrl))
         player.prepare()
-        player.playWhenReady = ad.type == ManualAdType.LINEAR
+        player.play()
     }
 
-    // [2] Interactive placeholders pause at their end while TAR owns the overlay.
+    // [2] TAR owns the overlay while the paused player stays hidden.
     private fun showInteractiveAd(ad: ManualAd) {
         val adParameters = ad.adParameters
         if (adParameters == null) {
@@ -291,12 +275,10 @@ class ManualCsaiActivity : AppCompatActivity() {
             finishAdBreak("TrueX credit earned • remaining ads skipped")
             return
         }
-        // Opt-out, error, cancel, or IDVx: let placeholder reach its end, then play fallback linear ads.
-        Log.i(TAG, "completeInteractiveAd: ${ad.type} complete without pod skip; playing placeholder to end for fallback ads")
-        binding.playerView.visibility = View.VISIBLE
-        waitingForInteractivePlaceholderEnd = true
-        player.play()
+        // Opt-out, error, cancel, or IDVx: continue with the next ad in the pod.
+        Log.i(TAG, "completeInteractiveAd: ${ad.type} complete without pod skip; continuing fallback pod")
         showStatus("${ad.type} complete • continuing fallback pod")
+        advanceAdPod()
     }
 
     private fun advanceAdPod() {
@@ -309,7 +291,6 @@ class ManualCsaiActivity : AppCompatActivity() {
         Log.i(TAG, "finishAdBreak: $message; resuming content at ${contentPositionMs}ms")
         playingAdPod = false
         currentAdIndex = -1
-        waitingForInteractivePlaceholderEnd = false
         disposeRenderer()
         showStatus(message)
         playContent(contentPositionMs)

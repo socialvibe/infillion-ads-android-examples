@@ -31,12 +31,12 @@ import java.util.concurrent.CopyOnWriteArrayList
  * 5. Navigate D-pad Right to "Watch Ads" option
  * 6. Press OK (Center / Enter)
  * 7. Verify OPT_OUT event fired
- * 8. Verify TrueX placeholder finishes
+ * 8. Verify TrueX completes and the pod advances to IDVx
  * 9. Verify IDVx starts and TruexAdRenderer launches IDVx unit
  * 10. Press OK on interactive portion, verify UI changes, and take screenshot
  * 11. Wait ~30s for IDVx duration / countdown to end
  * 12. Verify AD_COMPLETED fired, but AD_FREE_POD was NOT awarded
- * 13. Verify player advances past IDVx placeholder and begins next ad in pod (airline-linear)
+ * 13. Verify the pod advances past IDVx and begins next ad in pod (airline-linear)
  * 14. Print all captured TrueX and IDVx event transitions
  * 15. Complete test cleanly
  */
@@ -163,10 +163,10 @@ class ManualCsaiIdvxFlowTest {
                 } else emptyList()
             }
 
-            Log.i(TAG, "Step 8: Verify TrueX placeholder finishes and transitions to IDVx")
+            Log.i(TAG, "Step 8: Verify TrueX completes and the pod advances to IDVx")
             waitForCondition(
                 timeoutMs = 25_000L,
-                description = "TrueX placeholder playback completing and advancing to IDVx",
+                description = "TrueX completing and advancing to IDVx",
                 details = { "status='${activity.statusTextForTesting}'" },
             ) {
                 activity.statusTextForTesting.contains("TRUEX complete") ||
@@ -233,7 +233,7 @@ class ManualCsaiIdvxFlowTest {
             )
             Log.i(TAG, "Verified AD_COMPLETED fired without AD_FREE_POD")
 
-            Log.i(TAG, "Step 13: Verify player seeked over IDVx placeholder and started next ad in pod (airline-linear)")
+            Log.i(TAG, "Step 13: Verify the pod advanced past IDVx and started next ad in pod (airline-linear)")
             waitForCondition(
                 timeoutMs = 35_000L,
                 description = "Linear fallback ad (airline-linear) actively playing (not buffering)",

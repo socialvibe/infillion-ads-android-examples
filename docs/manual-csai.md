@@ -16,10 +16,10 @@ does not depend on either IMA example.
 3. A one-shot gate detects the short reference midroll.
 4. The activity stores the content position and plays the resolved pod.
 5. Linear ads play through the same case-local ExoPlayer.
-6. For TrueX or IDVx, the placeholder is positioned near its end and paused, the player is hidden, and
-   `TruexAdRenderer.init` receives the extracted JSON in the overlay `FrameLayout`.
-7. `AD_FREE_POD` records TrueX credit. On `AD_COMPLETED`, earned credit skips the remaining pod; errors and
-   unavailable ads continue the fallback pod.
+6. For TrueX or IDVx, the placeholder video is not played: the player is hidden and `TruexAdRenderer.init`
+   receives the extracted JSON in the overlay `FrameLayout`.
+7. `AD_FREE_POD` records TrueX credit. On `AD_COMPLETED`, earned credit skips the remaining pod; opt-out,
+   errors, unavailable ads, and IDVx continue directly with the next ad in the pod.
 8. Content is reloaded and restored to its saved position after the pod.
 
 ## VAST tag formats and ad parameters
