@@ -5,28 +5,31 @@
 - Android Studio
 - JDK 17
 - Android SDK 35
-- An Android TV device or emulator running API 28 or newer
+- An Android TV device or emulator running API 28 or newer (`kotlin-ctv-app`)
+- A phone or tablet device or emulator running API 28 or newer (`kotlin-mobile-app`, `java-mobile-app`)
 - Network access to the sample media, Google IMA, and the TrueX renderer Maven repository
 
 ## Build and test
 
-Build the debug APK:
+Build the debug APKs of all apps:
 
 ```shell
 ./gradlew assembleDebug
 ```
 
-Run all unit tests:
+Run all unit tests of all apps:
 
 ```shell
 ./gradlew testDebugUnitTest
 ```
 
-Run functional UI tests on a connected Android TV device or emulator:
+Run functional UI tests of the CTV app on a connected Android TV device or emulator:
 
 ```shell
-./gradlew connectedDebugAndroidTest
+./gradlew :kotlin-ctv-app:connectedDebugAndroidTest
 ```
+
+The mobile apps have unit tests only.
 
 Or run via standard `adb`:
 

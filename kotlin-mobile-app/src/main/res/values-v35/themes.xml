@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- targetSdk 35 forces edge-to-edge; keep the classic system bars so the toolbar stays below them. -->
+    <style name="Theme.InfillionAds" parent="Theme.AppCompat.NoActionBar">
+        <item name="android:fontFamily">@font/be_vietnam_pro_regular</item>
+        <item name="android:windowBackground">@color/charcoal</item>
+        <item name="android:statusBarColor">@color/charcoal</item>
+        <item name="android:navigationBarColor">@color/charcoal</item>
+        <item name="android:windowOptOutEdgeToEdgeEnforcement">true</item>
+        <item name="colorPrimary">@color/charcoal</item>
+        <item name="colorAccent">@color/bloom_pink</item>
+        <item name="colorControlNormal">@color/fog_gray</item>
+    </style>
+</resources>

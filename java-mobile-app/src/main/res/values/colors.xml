@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="charcoal">#2D2D2D</color>
+    <color name="charcoal_deep">#242222</color>
+    <color name="charcoal_deep_85">#D9242222</color>
+    <color name="fog_gray">#F6F6F6</color>
+    <color name="fog_gray_8">#14F6F6F6</color>
+    <color name="muted_fog">#E4E4E4</color>
+    <color name="muted_fog_60">#99E4E4E4</color>
+    <color name="bloom_purple">#BB6AEF</color>
+    <color name="bloom_pink">#F948A1</color>
+    <color name="bloom_orange">#FC5D3D</color>
+</resources>

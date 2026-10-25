@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.InfillionAds" parent="Theme.AppCompat.NoActionBar">
+        <item name="android:fontFamily">@font/be_vietnam_pro_regular</item>
+        <item name="android:windowBackground">@color/charcoal</item>
+        <item name="android:statusBarColor">@color/charcoal</item>
+        <item name="android:navigationBarColor">@color/charcoal</item>
+        <item name="colorPrimary">@color/charcoal</item>
+        <item name="colorAccent">@color/bloom_pink</item>
+        <item name="colorControlNormal">@color/fog_gray</item>
+    </style>
+
+    <style name="Toolbar.InfillionAds" parent="Widget.AppCompat.Toolbar">
+        <item name="android:background">@color/charcoal</item>
+        <item name="titleTextAppearance">@style/TextAppearance.InfillionAds.ToolbarTitle</item>
+        <item name="titleTextColor">@color/fog_gray</item>
+        <item name="theme">@style/ThemeOverlay.AppCompat.Dark.ActionBar</item>
+    </style>
+
+    <style name="TextAppearance.InfillionAds.ToolbarTitle" parent="TextAppearance.AppCompat.Widget.ActionBar.Title">
+        <item name="android:fontFamily">@font/be_vietnam_pro_medium</item>
+        <item name="android:textSize">17sp</item>
+    </style>
+
+    <style name="Chip.InfillionAds" parent="">
+        <item name="android:layout_width">wrap_content</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:background">@drawable/chip_bg</item>
+        <item name="android:fontFamily">@font/be_vietnam_pro_medium</item>
+        <item name="android:paddingHorizontal">10dp</item>
+        <item name="android:paddingVertical">5dp</item>
+        <item name="android:textColor">@color/fog_gray</item>
+        <item name="android:textSize">12sp</item>
+    </style>
+</resources>

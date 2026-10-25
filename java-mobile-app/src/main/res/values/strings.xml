@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Infillion Ads (Java)</string>
+    <string name="home_heading">Interactive ads examples</string>
+    <string name="home_intro">TrueX and IDVx ads rendered by TruexAdRenderer-Android. Each example is self-contained: pick one and read it top to bottom.</string>
+    <string name="home_footer">App %1$s · TruexAdRenderer %2$s</string>
+    <string name="manual_csai_title">Plain / Manual CSAI</string>
+    <string name="manual_csai_description">Own the ad break yourself: pause content, run the interactive renderer, then skip or continue the pod.</string>
+    <string name="manual_csai_delivery">Simulated request</string>
+    <string name="manual_csai_insertion">Client-side</string>
+    <string name="player_status_content">Content</string>
+</resources>
