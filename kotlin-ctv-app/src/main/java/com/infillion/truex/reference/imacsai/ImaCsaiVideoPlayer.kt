@@ -73,9 +73,6 @@ internal class ImaCsaiVideoPlayer(
         )
     }
 
-    val contentPositionMs: Long
-        get() = if (!inAdBreak && currentAd == null) player.currentPosition else savedContentPositionMs
-
     val contentProgressProvider = ContentProgressProvider {
         if (inAdBreak || currentAd != null || player.duration <= 0) {
             VideoProgressUpdate.VIDEO_TIME_NOT_READY
