@@ -3,11 +3,6 @@
 Use this example when the application or a publisher-owned ad layer decides when an ad break starts and which
 ads it contains.
 
-## Copy
-
-Copy the complete `manualcsai` package, `activity_manual_csai.xml`, and `manual_ad_break.json`. The package
-does not depend on either IMA example.
-
 ## Flow
 
 1. Before content starts, the activity replaces `${user-id}` / `#{user-id}` in each interactive `vastUrl`

@@ -27,19 +27,6 @@ class ImaCsaiActivity : AppCompatActivity() {
     private var truexAdCreditReceived = false
     private var truexAdTerminalEvent = false
     private var currentInteractiveType: ImaCsaiAdType? = null
-    private var adsRequested = false
-
-    private val midrollCheck = object : Runnable {
-        override fun run() {
-            if (!adsRequested && videoPlayer.contentPositionMs >= MIDROLL_MS) {
-                Log.i(TAG, "Midroll trigger reached at ${videoPlayer.contentPositionMs}ms")
-                requestAds()
-            }
-            if (!isFinishing) {
-                binding.root.postDelayed(this, 250L)
-            }
-        }
-    }
 
     // Handles lifecycle and user-interaction events emitted by TruexAdRenderer.
     private val truexAdEventHandler = IEventEmitter.IEventHandler { event, data ->
@@ -115,8 +102,7 @@ class ImaCsaiActivity : AppCompatActivity() {
         configureIma()
         Log.i(TAG, "Starting content playback from $CONTENT_URL")
         videoPlayer.playContent(CONTENT_URL)
-        showStatus("Content • IMA request at ${MIDROLL_MS / 1_000}s")
-        binding.root.post(midrollCheck)
+        requestAds()
     }
 
     private fun configureIma() {
@@ -141,11 +127,10 @@ class ImaCsaiActivity : AppCompatActivity() {
         }
     }
 
-    // [1] The host requests a real client-side pod at its content midroll.
+    // [1] Request the VMAP playlist once; IMA schedules ad breaks using contentProgressProvider.
     private fun requestAds() {
-        adsRequested = true
-        Log.i(TAG, "requestAds: requesting Google IMA client-side ads from $AD_TAG_URL")
-        showStatus("Requesting Google IMA client-side ads")
+        Log.i(TAG, "requestAds: requesting Google IMA VMAP playlist from $AD_TAG_URL")
+        showStatus("Content • loading IMA VMAP schedule")
         val request = ImaSdkFactory.getInstance().createAdsRequest().apply {
             adTagUrl = AD_TAG_URL
             contentProgressProvider = videoPlayer.contentProgressProvider
@@ -156,7 +141,8 @@ class ImaCsaiActivity : AppCompatActivity() {
     }
 
     private fun configureAdsManager(manager: AdsManager) {
-        Log.i(TAG, "configureAdsManager: attaching listeners and initializing AdsManager")
+        val cuePoints = manager.adCuePoints
+        Log.i(TAG, "configureAdsManager: attaching listeners and initializing AdsManager (cuePoints=$cuePoints)")
         manager.addAdErrorListener(
             AdErrorEvent.AdErrorListener { event ->
                 Log.e(TAG, "IMA AdsManager playback error: ${event.error.message}")
@@ -166,6 +152,8 @@ class ImaCsaiActivity : AppCompatActivity() {
             },
         )
         manager.addAdEventListener(AdEvent.AdEventListener(::onAdEvent))
+        videoPlayer.setAdMarkers(cuePointMarkerTimesMs(cuePoints))
+        showStatus(formatCuePointsSummary(cuePoints))
         val renderingSettings: AdsRenderingSettings =
             ImaSdkFactory.getInstance().createAdsRenderingSettings().apply {
                 focusSkipButtonWhenAvailable = true
@@ -355,8 +343,7 @@ class ImaCsaiActivity : AppCompatActivity() {
     }
 
     override fun onDestroy() {
-        Log.i(TAG, "onDestroy: cleaning up callbacks, renderer, AdsManager, and player")
-        binding.root.removeCallbacks(midrollCheck)
+        Log.i(TAG, "onDestroy: cleaning up renderer, AdsManager, and player")
         disposeRenderer()
         destroyAdsManager()
         adsLoader.release()
@@ -366,8 +353,7 @@ class ImaCsaiActivity : AppCompatActivity() {
 
     private companion object {
         const val TAG = "ImaCsai"
-        const val MIDROLL_MS = 10_000L
         const val CONTENT_URL = "https://ctv.truex.com/assets/reference-app-stream-no-ads-720p.mp4"
-        const val AD_TAG_URL = "https://s3.us-east-1.amazonaws.com/stash.truex.com/sample-tags/ima-csai/fire-tv/vast-preroll.xml"
+        const val AD_TAG_URL = "https://s3.us-east-1.amazonaws.com/stash.truex.com/sample-tags/ima-csai/fire-tv/vmap-with-midroll.xml"
     }
 }

@@ -13,7 +13,7 @@ The Android TV app demonstrates three complete integrations:
 | Example | Ad source | Midroll behavior |
 | --- | --- | --- |
 | **Plain / Manual CSAI** | Bundled JSON fixture | The host app schedules and plays the ad pod. |
-| **Google IMA CSAI** | Hosted VAST request | Google IMA requests and sequences client-side ads. |
+| **Google IMA CSAI** | Hosted VMAP request | Google IMA schedules and sequences client-side ads. |
 | **Google IMA SSAI** | Google DAI VOD request | Google DAI returns one stream with stitched ad breaks. |
 
 The examples intentionally duplicate their player, ad, and `TruexAdRenderer` code. Choose one example and
@@ -159,7 +159,8 @@ The sample uses:
   tags to ensure ads are filled and not rejected during development and automated testing. The TrueX ad server
   currently serves ads in the US and Canada only; passing this IP parameter enables distributed or non-US
   development teams (such as EU-based engineers) and cloud CI runners to reliably test interactive ads.
-- Google IMA CSAI sample tag via [`vast-preroll.xml`][csai_vast_preroll_link].
+- Google IMA CSAI sample playlist via [`vmap-with-midroll.xml`][csai_vmap_midroll_link]
+  using [`vast-midroll.xml`][csai_vast_midroll_link].
 - Google DAI sample content ID `2496857` and video ID `truex-content22-4k` (Google Ad Manager configures 1
   preroll and 3 midrolls via [`ss_sab-vmap.xml`][ss_sab_vmap_link]
   using [`vast-preroll.xml`][vast_preroll_link] and [`vast-midroll.xml`][vast_midroll_link]).
@@ -173,7 +174,7 @@ No credentials, signing keys, or production publisher configuration are included
 - [Google IMA SSAI](docs/ima-ssai.md)
 - [Plain / Manual CSAI (mobile, Kotlin and Java)](docs/mobile-manual-csai.md)
 
-Each guide names the package to copy, the key event transitions, and the production concerns intentionally
+Each guide covers the integration flow, key event transitions, and the production concerns intentionally
 left outside this reference app.
 
 ## Project boundaries
@@ -184,7 +185,8 @@ parsing. Error and fallback states are visible so developers can observe the int
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for build, test, versioning, and pull-request instructions.
 
-[csai_vast_preroll_link]: https://s3.us-east-1.amazonaws.com/stash.truex.com/sample-tags/ima-csai/fire-tv/vast-preroll.xml
+[csai_vmap_midroll_link]: https://s3.us-east-1.amazonaws.com/stash.truex.com/sample-tags/ima-csai/fire-tv/vmap-with-midroll.xml
+[csai_vast_midroll_link]: https://s3.us-east-1.amazonaws.com/stash.truex.com/sample-tags/ima-csai/fire-tv/vast-midroll.xml
 [ss_sab_vmap_link]: https://s3.us-east-1.amazonaws.com/stash.truex.com/sample-tags/dfp-dai/firetv-vmap/ss_sab-vmap.xml
 [vast_preroll_link]: https://s3.us-east-1.amazonaws.com/stash.truex.com/sample-tags/dfp-dai/firetv-vmap/vast-preroll.xml
 [vast_midroll_link]: https://s3.us-east-1.amazonaws.com/stash.truex.com/sample-tags/dfp-dai/firetv-vmap/vast-midroll.xml

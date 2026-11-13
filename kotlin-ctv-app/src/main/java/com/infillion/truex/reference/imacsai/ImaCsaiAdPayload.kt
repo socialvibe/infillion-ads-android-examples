@@ -3,6 +3,8 @@ package com.infillion.truex.reference.imacsai
 import com.google.ads.interactivemedia.v3.api.CompanionAd
 import org.json.JSONObject
 import java.util.Base64
+import kotlin.math.roundToInt
+import kotlin.math.roundToLong
 
 internal enum class ImaCsaiAdType {
     TRUEX,
@@ -17,6 +19,33 @@ internal fun classifyImaCsaiAd(adSystem: String?): ImaCsaiAdType = when {
 }
 
 internal fun canPlayTruex(adPosition: Int): Boolean = adPosition == 1
+
+internal fun formatCuePointsSummary(cuePointsSeconds: List<Float>?): String {
+    if (cuePointsSeconds.isNullOrEmpty()) {
+        return "Content • IMA VAST ad"
+    }
+    val labels = cuePointsSeconds.map { seconds ->
+        when {
+            seconds == 0f -> "preroll"
+            seconds < 0f -> "postroll"
+            else -> "${seconds.roundToInt()}s"
+        }
+    }
+    val noun = if (labels.size == 1) "VMAP break" else "VMAP breaks"
+    return if (cuePointsSeconds.all { it > 0f }) {
+        "Content • $noun at ${labels.joinToString(", ")}"
+    } else {
+        "Content • $noun: ${labels.joinToString(", ")}"
+    }
+}
+
+internal fun cuePointMarkerTimesMs(cuePointsSeconds: List<Float>?): LongArray =
+    cuePointsSeconds
+        ?.filter { it >= 0f }
+        ?.map { (it * 1_000f).roundToLong() }
+        ?.sorted()
+        ?.toLongArray()
+        ?: LongArray(0)
 
 /**
  * Extracts the interactive ad JSON payload from either a TrueX companion ad or trafficking parameters.

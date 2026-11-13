@@ -23,10 +23,13 @@ internal class ImaCsaiVideoPlayer(
     private val player = ExoPlayer.Builder(playerView.context).build()
     private val callbacks = mutableListOf<VideoAdPlayer.VideoAdPlayerCallback>()
     private var currentAd: AdMediaInfo? = null
+    private var pendingAd: AdMediaInfo? = null
     private var contentUrl: String? = null
     private var savedContentPositionMs = 0L
+    private var inAdBreak = false
     private var loadedCallbackSent = false
     private var adHasPlayed = false
+    private var adMarkerTimesMs = LongArray(0)
 
     init {
         playerView.player = player
@@ -71,10 +74,10 @@ internal class ImaCsaiVideoPlayer(
     }
 
     val contentPositionMs: Long
-        get() = if (currentAd == null) player.currentPosition else savedContentPositionMs
+        get() = if (!inAdBreak && currentAd == null) player.currentPosition else savedContentPositionMs
 
     val contentProgressProvider = ContentProgressProvider {
-        if (currentAd != null || player.duration <= 0) {
+        if (inAdBreak || currentAd != null || player.duration <= 0) {
             VideoProgressUpdate.VIDEO_TIME_NOT_READY
         } else {
             VideoProgressUpdate(player.currentPosition, player.duration)
@@ -84,6 +87,8 @@ internal class ImaCsaiVideoPlayer(
     fun playContent(url: String, positionMs: Long = 0L) {
         contentUrl = url
         currentAd = null
+        pendingAd = null
+        inAdBreak = false
         player.setMediaItem(MediaItem.fromUri(url), positionMs)
         player.prepare()
         player.play()
@@ -92,15 +97,31 @@ internal class ImaCsaiVideoPlayer(
     }
 
     fun pauseContentForAds() {
-        savedContentPositionMs = player.currentPosition
+        if (!inAdBreak) {
+            savedContentPositionMs = player.currentPosition
+        }
+        inAdBreak = true
         player.pause()
         playerView.useController = false
+        pendingAd?.let { ad ->
+            pendingAd = null
+            prepareAd(ad)
+        }
     }
 
     fun resumeContent() {
         val url = contentUrl ?: return
-        val resumePositionMs = if (currentAd == null) player.currentPosition else savedContentPositionMs
+        val wasInAdBreak = inAdBreak
+        val resumePositionMs = if (wasInAdBreak || currentAd != null) savedContentPositionMs else player.currentPosition
         playContent(url, resumePositionMs)
+        if (wasInAdBreak) {
+            updateAdMarkers(markPlayedUpToMs = resumePositionMs)
+        }
+    }
+
+    fun setAdMarkers(timesMs: LongArray) {
+        adMarkerTimesMs = timesMs
+        updateAdMarkers(markPlayedUpToMs = -1L)
     }
 
     fun finishCurrentAd() {
@@ -121,19 +142,27 @@ internal class ImaCsaiVideoPlayer(
     }
 
     override fun loadAd(adMediaInfo: AdMediaInfo, adPodInfo: AdPodInfo) {
-        currentAd = adMediaInfo
-        loadedCallbackSent = false
-        adHasPlayed = false
-        player.setMediaItem(MediaItem.fromUri(adMediaInfo.url))
-        player.prepare()
+        if (!inAdBreak) {
+            // Defer replacing the active content MediaItem until CONTENT_PAUSE_REQUESTED.
+            pendingAd = adMediaInfo
+            return
+        }
+        prepareAd(adMediaInfo)
     }
 
-    override fun playAd(adMediaInfo: AdMediaInfo) = player.play()
+    override fun playAd(adMediaInfo: AdMediaInfo) {
+        if (currentAd != adMediaInfo) {
+            pendingAd = null
+            prepareAd(adMediaInfo)
+        }
+        player.play()
+    }
 
     override fun pauseAd(adMediaInfo: AdMediaInfo) = player.pause()
 
     override fun stopAd(adMediaInfo: AdMediaInfo) {
         currentAd = null
+        pendingAd = null
         player.stop()
     }
 
@@ -158,6 +187,25 @@ internal class ImaCsaiVideoPlayer(
     }
 
     override fun getVolume(): Int = (player.volume * 100).roundToInt()
+
+    private fun prepareAd(adMediaInfo: AdMediaInfo) {
+        currentAd = adMediaInfo
+        loadedCallbackSent = false
+        adHasPlayed = false
+        player.setMediaItem(MediaItem.fromUri(adMediaInfo.url))
+        player.prepare()
+    }
+
+    private fun updateAdMarkers(markPlayedUpToMs: Long) {
+        if (adMarkerTimesMs.isEmpty()) {
+            playerView.setExtraAdGroupMarkers(null, null)
+            return
+        }
+        val played = BooleanArray(adMarkerTimesMs.size) { index ->
+            adMarkerTimesMs[index] <= markPlayedUpToMs
+        }
+        playerView.setExtraAdGroupMarkers(adMarkerTimesMs, played)
+    }
 
     private fun updateAdProgress() {
         val ad = currentAd ?: return
