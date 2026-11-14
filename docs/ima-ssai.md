@@ -2,11 +2,6 @@
 
 Use this example when Google DAI returns one VOD stream containing content and stitched ad periods.
 
-## Copy
-
-Copy the complete `imassai` package and `activity_ima_ssai.xml`. The package owns its `VideoStreamPlayer`,
-Media3 wrapper, DAI request, seeking, and renderer lifecycle.
-
 ## Flow
 
 1. The activity creates a `StreamDisplayContainer` and requests the reference VOD stream with its content and

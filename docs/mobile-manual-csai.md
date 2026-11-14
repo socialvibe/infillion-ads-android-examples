@@ -11,11 +11,6 @@ and which ads it contains. The same example ships in two languages:
 Both apps behave the same. The flow, VAST parsing, and renderer handling match the
 [CTV Manual CSAI example](manual-csai.md); only the screen layout and touch handling are mobile-specific.
 
-## Copy
-
-Copy the complete `manualcsai` package, `activity_manual_csai.xml`, and `manual_ad_break.json` from the app
-in your language. The package does not depend on the home screen or on the other app.
-
 ## Flow
 
 1. Before content starts, the activity replaces `${user-id}` / `#{user-id}` in each interactive `vastUrl`

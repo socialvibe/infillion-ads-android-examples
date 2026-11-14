@@ -1,18 +1,19 @@
 # Google IMA CSAI
 
-Use this example when Google IMA requests and sequences a client-side ad pod separately from the content
-stream.
-
-## Copy
-
-Copy the complete `imacsai` package and `activity_ima_csai.xml`. Its IMA adapter, ExoPlayer, and renderer
-integration are intentionally local to the package.
+Use this example when Google IMA schedules and sequences client-side ad breaks from a VMAP playlist (or
+single VAST tag) separately from the content stream.
 
 ## Flow
 
-1. The activity begins content playback and exposes content progress to IMA.
-2. The short reference midroll issues an `AdsRequest` with the hosted sample VAST URL.
-3. The case-local `VideoAdPlayer` lets IMA load and control ad media through ExoPlayer.
+1. The activity begins content playback, exposes content progress to IMA, and requests the hosted sample
+   VMAP playlist
+   ([`https://s3.us-east-1.amazonaws.com/stash.truex.com/sample-tags/ima-csai/fire-tv/vmap-with-midroll.xml`][csai_vmap_midroll_link])
+   once in `onCreate()`.
+2. When `AdsManager` loads, the activity reads `adsManager.adCuePoints` to display the VMAP schedule and
+   seekbar markers, then calls `adsManager.init()` so IMA monitors content progress and triggers the 10s
+   midroll automatically.
+3. The case-local `VideoAdPlayer` lets IMA load and control ad media through ExoPlayer without interrupting
+   content playback before `CONTENT_PAUSE_REQUESTED`.
 4. `CONTENT_PAUSE_REQUESTED` stores the content position; `CONTENT_RESUME_REQUESTED` reloads content at that
    position.
 5. On `STARTED`, the controller checks `AdSystem`. Normal linear ads remain under IMA control. TrueX ads must
@@ -41,7 +42,7 @@ The activity creates `TruexAdRenderer` and `TruexAdOptions` itself:
 
 | IMA event | Host responsibility |
 | --- | --- |
-| `LOADED` | Start the `AdsManager`. |
+| `LOADED` | Start `AdsManager` for single VAST tags (ignored by IMA for VMAP playlists, which auto-start after `init()`). |
 | `CONTENT_PAUSE_REQUESTED` | Stop content and preserve its position. |
 | `STARTED` | Detect an interactive placeholder and enter the renderer when needed. |
 | `CONTENT_RESUME_REQUESTED` | Restore content and controls. |
@@ -107,13 +108,15 @@ The activity first checks `ad.companionAds` for a `truex` companion data URL, th
 
 ## Sample tag configuration
 
-The reference Google IMA CSAI example requests its sample ad break from
-[`vast-preroll.xml`][csai_vast_preroll_link], which defines a client-side pod with TrueX, IDVx, and linear
-fallback ads.
+The reference Google IMA CSAI example sets `AD_TAG_URL` to the VMAP playlist
+[`https://s3.us-east-1.amazonaws.com/stash.truex.com/sample-tags/ima-csai/fire-tv/vmap-with-midroll.xml`][csai_vmap_midroll_link],
+which schedules a single 10s midroll break pointing to [`vast-midroll.xml`][csai_vast_midroll_link] (a
+client-side pod with TrueX, IDVx, and linear fallback ads).
 
-The sample tags inside `vast-preroll.xml` include `&ip=158.106.195.210` (Infillion's NYC office IP).
+The sample tags inside `vast-midroll.xml` include `&ip=158.106.195.210` (Infillion's NYC office IP).
 Because the TrueX ad server currently serves ads in the US and Canada only, this parameter ensures test ads
 are filled and not rejected when testing from outside the US (for example, distributed or EU-based development
 teams) or in cloud CI environments.
 
-[csai_vast_preroll_link]: https://s3.us-east-1.amazonaws.com/stash.truex.com/sample-tags/ima-csai/fire-tv/vast-preroll.xml
+[csai_vmap_midroll_link]: https://s3.us-east-1.amazonaws.com/stash.truex.com/sample-tags/ima-csai/fire-tv/vmap-with-midroll.xml
+[csai_vast_midroll_link]: https://s3.us-east-1.amazonaws.com/stash.truex.com/sample-tags/ima-csai/fire-tv/vast-midroll.xml

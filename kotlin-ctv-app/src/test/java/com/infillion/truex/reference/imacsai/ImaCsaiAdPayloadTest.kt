@@ -1,6 +1,7 @@
 package com.infillion.truex.reference.imacsai
 
 import com.google.ads.interactivemedia.v3.api.CompanionAd
+import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
@@ -21,6 +22,25 @@ class ImaCsaiAdPayloadTest {
         assertTrue(canPlayTruex(1))
         assertFalse(canPlayTruex(2))
         assertFalse(canPlayTruex(0))
+    }
+
+    @Test
+    fun formatsVmapCuePointsAndMarkerTimestamps() {
+        assertEquals("Content • IMA VAST ad", formatCuePointsSummary(null))
+        assertEquals("Content • IMA VAST ad", formatCuePointsSummary(emptyList()))
+        assertEquals("Content • VMAP break at 10s", formatCuePointsSummary(listOf(10f)))
+        assertEquals("Content • VMAP breaks at 10s, 30s", formatCuePointsSummary(listOf(10f, 30f)))
+        assertEquals(
+            "Content • VMAP breaks: preroll, 10s, postroll",
+            formatCuePointsSummary(listOf(0f, 10f, -1f)),
+        )
+
+        assertArrayEquals(LongArray(0), cuePointMarkerTimesMs(null))
+        assertArrayEquals(longArrayOf(10_000L), cuePointMarkerTimesMs(listOf(10f)))
+        assertArrayEquals(
+            longArrayOf(0L, 10_000L, 30_500L),
+            cuePointMarkerTimesMs(listOf(30.5f, -1f, 0f, 10f)),
+        )
     }
 
     @Test
